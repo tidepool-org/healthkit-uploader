@@ -383,13 +383,18 @@ public class TPUploaderServiceAPI {
     func sendRequest(_ method: String, urlExtension: String, contentType: ContentType? = nil, body: Data? = nil, completion: @escaping (_ response: SendRequestResponse) -> Void) {
         
         if (config.isConnectedToNetwork()) {
-            let baseURL = config.baseUrlString()!
+            guard let baseURL = config.baseUrlString() else {
+                DDLogError("Not logged in!")
+                let error = NSError(domain: "TidepoolHKUploader service API", code: -1, userInfo: [NSLocalizedDescriptionKey: "Not logged in!"])
+                let sendResponse = SendRequestResponse(error: error)
+                completion(sendResponse)
+                return
+            }
             var urlString = baseURL + urlExtension
             urlString = urlString.addingPercentEncoding(withAllowedCharacters: CharacterSet.urlQueryAllowed)!
             let url = URL(string: urlString)
             var request = URLRequest(url: url!)
             let sendResponse = SendRequestResponse(request: request)
-            
             request.httpMethod = method
             
             if let contentType = contentType {
@@ -423,7 +428,11 @@ public class TPUploaderServiceAPI {
             }
             task.resume()
         } else {
-            DDLogInfo("Not connected to network")
+            DDLogError("Not connected to network")
+            let error = NSError(domain: "TidepoolHKUploader service API", code: -1, userInfo: [NSLocalizedDescriptionKey: "Not connected to network"])
+            let sendResponse = SendRequestResponse(error: error)
+            completion(sendResponse)
+            return
         }
     }
     
