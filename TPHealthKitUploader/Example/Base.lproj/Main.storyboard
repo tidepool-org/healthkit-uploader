@@ -195,15 +195,21 @@
                                         </connections>
                                     </switch>
                                     <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="roundedRect" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="YVU-aU-ixR">
-                                        <rect key="frame" x="20" y="80" width="140" height="30"/>
+                                        <rect key="frame" x="20" y="80" width="160" height="30"/>
                                         <color key="backgroundColor" white="0.33333333333333331" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
+                                        <constraints>
+                                            <constraint firstAttribute="width" constant="160" id="YaC-Dv-FS6"/>
+                                        </constraints>
                                         <state key="normal" title="Start Historical Sync">
                                             <color key="titleColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
                                         </state>
                                     </button>
                                     <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="roundedRect" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="L9D-vO-3lq" userLabel="Log out">
-                                        <rect key="frame" x="20" y="222" width="52" height="30"/>
+                                        <rect key="frame" x="20" y="222" width="72" height="30"/>
                                         <color key="backgroundColor" white="0.33333333329999998" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
+                                        <constraints>
+                                            <constraint firstAttribute="width" constant="72" id="8MF-Zu-5bN"/>
+                                        </constraints>
                                         <state key="normal" title="Log out">
                                             <color key="titleColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
                                         </state>
@@ -273,6 +279,7 @@
                         <outlet property="errorFeedbackLabel" destination="4fz-3L-LWv" id="luO-Vd-1Yt"/>
                         <outlet property="hkEnableSwitch" destination="Foy-Vf-i5u" id="YvQ-3s-8gA"/>
                         <outlet property="inputContainerView" destination="8ft-gS-SvR" id="dK5-O1-Y0k"/>
+                        <outlet property="logOutButton" destination="L9D-vO-3lq" id="HlI-6m-XUy"/>
                         <outlet property="loginButton" destination="Spf-Ic-mwJ" id="3Kl-FO-QGz"/>
                         <outlet property="loginIndicator" destination="H1d-nC-Tma" id="45o-by-HmQ"/>
                         <outlet property="loginViewContainer" destination="u4d-Wb-isz" id="Co4-03-1l0"/>
@@ -280,6 +287,7 @@
                         <outlet property="passwordTextField" destination="xqj-ZI-2OM" id="THA-qv-qe2"/>
                         <outlet property="runViewContainer" destination="Nlr-yd-fiw" id="yqH-if-X1W"/>
                         <outlet property="serviceButton" destination="ayz-Jv-xhB" id="3lf-L0-p3d"/>
+                        <outlet property="startHistoricalSyncButton" destination="YVU-aU-ixR" id="5T0-V3-viJ"/>
                     </connections>
                 </viewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="dkx-z0-nzr" sceneMemberID="firstResponder"/>

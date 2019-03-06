@@ -28,19 +28,22 @@ class ViewController: UIViewController {
     // HK UI...
     @IBOutlet weak var runViewContainer: UIView!
     @IBOutlet weak var hkEnableSwitch: UISwitch!
-    
-    private let hkUploader = TPUploaderAPI.connector().uploader!
-    
+    @IBOutlet weak var logOutButton: UIButton!
+    @IBOutlet weak var startHistoricalSyncButton: UIButton!
+        
     override func viewDidLoad() {
         super.viewDidLoad()
+        hkUploader = TPUploaderAPI.connector().uploader!
+        
         // Do any additional setup after loading the view, typically from a nib.
-        self.configureAsLoggedIn(false)
+        self.configureAsLoggedIn(APIConnector.connector().sessionToken != nil)
         updateButtonStates()
         let notificationCenter = NotificationCenter.default
         notificationCenter.addObserver(self, selector: #selector(ViewController.textFieldDidChange), name: UITextField.textDidChangeNotification, object: nil)
         self.serviceButton.setTitle(APIConnector.connector().currentService, for: .normal)
     }
-
+    private var hkUploader: TPUploader!
+    
     //
     // MARK: - HealthKit UI
     //

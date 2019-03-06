@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		482128DE222F6A0D0033D982 /* NSDateExtension.swift in Sources */ = {isa = PBXBuildFile; fileRef = 482128DD222F6A0D0033D982 /* NSDateExtension.swift */; };
 		483977D5221F68D700A833FF /* TPHealthKitUploader.h in Headers */ = {isa = PBXBuildFile; fileRef = 483977C7221F68D700A833FF /* TPHealthKitUploader.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		4839781E221F6AB800A833FF /* SwiftyJSON.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48397805221F6AB800A833FF /* SwiftyJSON.swift */; };
 		4839781F221F6AB800A833FF /* TPUploader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48397806221F6AB800A833FF /* TPUploader.swift */; };
@@ -74,6 +75,7 @@
 		09728F9FC94D3539AF1A55AF /* Pods-Example.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Example.release.xcconfig"; path = "Target Support Files/Pods-Example/Pods-Example.release.xcconfig"; sourceTree = "<group>"; };
 		0C4D9DA3E2120D2CB7FDD48D /* Pods-TPHealthKitUploader.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-TPHealthKitUploader.debug.xcconfig"; path = "Target Support Files/Pods-TPHealthKitUploader/Pods-TPHealthKitUploader.debug.xcconfig"; sourceTree = "<group>"; };
 		21A7296A14C67A53FB8E6F23 /* Pods-Example.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Example.debug.xcconfig"; path = "Target Support Files/Pods-Example/Pods-Example.debug.xcconfig"; sourceTree = "<group>"; };
+		482128DD222F6A0D0033D982 /* NSDateExtension.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = NSDateExtension.swift; sourceTree = "<group>"; };
 		483977C4221F68D700A833FF /* TPHealthKitUploader.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = TPHealthKitUploader.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		483977C7221F68D700A833FF /* TPHealthKitUploader.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = TPHealthKitUploader.h; sourceTree = "<group>"; };
 		483977C8221F68D700A833FF /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
@@ -185,6 +187,7 @@
 		4839780A221F6AB800A833FF /* Extensions */ = {
 			isa = PBXGroup;
 			children = (
+				482128DD222F6A0D0033D982 /* NSDateExtension.swift */,
 				4839780B221F6AB800A833FF /* UIApplicationExtension.swift */,
 				4839780C221F6AB800A833FF /* HKExtensions.swift */,
 				4839780D221F6AB800A833FF /* UIDateFormatterExtension.swift */,
@@ -459,6 +462,7 @@
 				4839782B221F6AB800A833FF /* HealthKitNotifications.swift in Sources */,
 				48397824221F6AB800A833FF /* HKExtensions.swift in Sources */,
 				48397826221F6AB800A833FF /* HealthKitUploadTypeCarb.swift in Sources */,
+				482128DE222F6A0D0033D982 /* NSDateExtension.swift in Sources */,
 				48397830221F6AB800A833FF /* HealthKitUploadStats.swift in Sources */,
 				48397820221F6AB800A833FF /* TPUploaderConfigInfo.swift in Sources */,
 				48397822221F6AB800A833FF /* TPTimeZoneTracker.swift in Sources */,

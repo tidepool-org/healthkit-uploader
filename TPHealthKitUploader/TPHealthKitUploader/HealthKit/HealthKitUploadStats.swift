@@ -120,12 +120,12 @@ class HealthKitUploadStats: NSObject {
         self.lastSuccessfulUploadLatestSampleTime = self.lastUploadAttemptLatestSampleTime
         UserDefaults.standard.set(self.lastSuccessfulUploadLatestSampleTime, forKey: HealthKitSettings.prefixedKey(prefix: self.mode.rawValue, type: self.uploadTypeName, key: HealthKitSettings.StatsLastSuccessfulUploadLatestSampleTimeKey))
 
-//        if self.mode != HealthKitUploadReader.Mode.Current {
-//            if self.totalDaysHistorical > 0 {
-//                self.currentDayHistorical = self.startDateHistoricalSamples.differenceInDays(self.lastSuccessfulUploadLatestSampleTime)
-//            }
-//            UserDefaults.standard.set(self.currentDayHistorical, forKey: HealthKitSettings.prefixedKey(prefix: self.mode.rawValue, type: self.uploadTypeName, key: HealthKitSettings.StatsCurrentDayHistoricalKey))
-//        }
+        if self.mode != HealthKitUploadReader.Mode.Current {
+            if self.totalDaysHistorical > 0 {
+                self.currentDayHistorical = self.startDateHistoricalSamples.differenceInDays(self.lastSuccessfulUploadLatestSampleTime)
+            }
+            UserDefaults.standard.set(self.currentDayHistorical, forKey: HealthKitSettings.prefixedKey(prefix: self.mode.rawValue, type: self.uploadTypeName, key: HealthKitSettings.StatsCurrentDayHistoricalKey))
+        }
         
         UserDefaults.standard.set(self.lastSuccessfulUploadTime, forKey: HealthKitSettings.prefixedKey(prefix: self.mode.rawValue, type: self.uploadTypeName, key: HealthKitSettings.StatsLastSuccessfulUploadTimeKey))
         UserDefaults.standard.set(self.totalUploadCount, forKey: HealthKitSettings.prefixedKey(prefix: self.mode.rawValue, type: self.uploadTypeName, key: HealthKitSettings.StatsTotalUploadCountKey))
@@ -163,7 +163,7 @@ class HealthKitUploadStats: NSObject {
                 
                 let endDate = UserDefaults.standard.object(forKey: HealthKitSettings.prefixedKey(prefix: self.mode.rawValue, type: self.uploadTypeName, key: HealthKitSettings.UploadQueryEndDateKey)) as? Date ?? Date()
                 self.endDateHistoricalSamples = endDate
-//                self.totalDaysHistorical = self.startDateHistoricalSamples.differenceInDays(self.endDateHistoricalSamples) + 1
+                self.totalDaysHistorical = self.startDateHistoricalSamples.differenceInDays(self.endDateHistoricalSamples) + 1
                 
                 UserDefaults.standard.set(self.startDateHistoricalSamples, forKey: HealthKitSettings.prefixedKey(prefix: self.mode.rawValue, type: self.uploadTypeName, key: HealthKitSettings.StatsStartDateHistoricalSamplesKey))
                 UserDefaults.standard.set(self.endDateHistoricalSamples, forKey: HealthKitSettings.prefixedKey(prefix: self.mode.rawValue, type: self.uploadTypeName, key: HealthKitSettings.StatsEndDateHistoricalSamplesKey))
@@ -178,11 +178,11 @@ class HealthKitUploadStats: NSObject {
     func updateHistoricalSamplesDateRange(startDate: Date, endDate: Date) {
         self.startDateHistoricalSamples = startDate
         self.endDateHistoricalSamples = endDate
-//        self.totalDaysHistorical = self.startDateHistoricalSamples.differenceInDays(self.endDateHistoricalSamples)
+        self.totalDaysHistorical = self.startDateHistoricalSamples.differenceInDays(self.endDateHistoricalSamples)
         
         UserDefaults.standard.set(self.startDateHistoricalSamples, forKey: HealthKitSettings.prefixedKey(prefix: self.mode.rawValue, type: self.uploadTypeName, key: HealthKitSettings.StatsStartDateHistoricalSamplesKey))
         UserDefaults.standard.set(self.endDateHistoricalSamples, forKey: HealthKitSettings.prefixedKey(prefix: self.mode.rawValue, type: self.uploadTypeName, key: HealthKitSettings.StatsEndDateHistoricalSamplesKey))
-//        UserDefaults.standard.set(self.totalDaysHistorical, forKey: HealthKitSettings.prefixedKey(prefix: self.mode.rawValue, type: self.uploadTypeName, key: HealthKitSettings.StatsTotalDaysHistoricalSamplesKey))
+        UserDefaults.standard.set(self.totalDaysHistorical, forKey: HealthKitSettings.prefixedKey(prefix: self.mode.rawValue, type: self.uploadTypeName, key: HealthKitSettings.StatsTotalDaysHistoricalSamplesKey))
         UserDefaults.standard.synchronize()
     }
  
