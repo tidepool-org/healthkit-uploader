@@ -114,8 +114,8 @@ class HealthKitUploadManager:
                 "mode" : mode
                 ]
 
-            NotificationCenter.default.post(Notification(name: Notification.Name(rawValue: HealthKitNotifications.Updated), object: mode, userInfo: uploadInfo))
-            NotificationCenter.default.post(Notification(name: Notification.Name(rawValue: HealthKitNotifications.TurnOnUploader), object: mode, userInfo: uploadInfo))
+            NotificationCenter.default.post(Notification(name: Notification.Name(rawValue: TPUploaderNotifications.Updated), object: mode, userInfo: uploadInfo))
+            NotificationCenter.default.post(Notification(name: Notification.Name(rawValue: TPUploaderNotifications.TurnOnUploader), object: mode, userInfo: uploadInfo))
         }
  
         func stopUploading(mode: HealthKitUploadReader.Mode, reason: HealthKitUploadReader.StoppedReason) {
@@ -153,8 +153,8 @@ class HealthKitUploadManager:
                 "reason": reason
             ]
             
-            NotificationCenter.default.post(Notification(name: Notification.Name(rawValue: HealthKitNotifications.Updated), object: mode, userInfo: uploadInfo))
-            NotificationCenter.default.post(Notification(name: Notification.Name(rawValue: HealthKitNotifications.TurnOffUploader), object: mode, userInfo: uploadInfo))
+            NotificationCenter.default.post(Notification(name: Notification.Name(rawValue: TPUploaderNotifications.Updated), object: mode, userInfo: uploadInfo))
+            NotificationCenter.default.post(Notification(name: Notification.Name(rawValue: TPUploaderNotifications.TurnOffUploader), object: mode, userInfo: uploadInfo))
         }
 
         func stopUploading(reason: HealthKitUploadReader.StoppedReason) {
@@ -469,11 +469,14 @@ class HealthKitUploadManager:
         }
     }
 
-    // TODO: decide what to do with stats for other upload data, for now this just returns the stats for the first type... perhaps create an amalgamated stats object for all types? Probably need to define UI first to see what we need...
-    func statsForMode(_ mode: HealthKitUploadReader.Mode) -> HealthKitUploadStats {
+    /// Return array of stats per type for specified mode
+    func statsForMode(_ mode: HealthKitUploadReader.Mode) -> [TPUploaderStats] {
         //
-        let firstHelper = uploadHelpers[0]
-        return firstHelper.stats[mode]!
+        var allStats: [TPUploaderStats] = []
+        for helper in uploadHelpers {
+            allStats.append(helper.stats[mode]!.stats)
+        }
+        return allStats
     }
 
     func isUploadInProgressForMode(_ mode: HealthKitUploadReader.Mode) -> Bool {

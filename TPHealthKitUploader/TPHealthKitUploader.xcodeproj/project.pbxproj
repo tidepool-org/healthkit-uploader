@@ -8,6 +8,8 @@
 
 /* Begin PBXBuildFile section */
 		482128DE222F6A0D0033D982 /* NSDateExtension.swift in Sources */ = {isa = PBXBuildFile; fileRef = 482128DD222F6A0D0033D982 /* NSDateExtension.swift */; };
+		482128E1223073D90033D982 /* DebugLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 482128E0223073D90033D982 /* DebugLog.swift */; };
+		482128E4223076E60033D982 /* TPUploaderStats.swift in Sources */ = {isa = PBXBuildFile; fileRef = 482128E3223076E60033D982 /* TPUploaderStats.swift */; };
 		483977D5221F68D700A833FF /* TPHealthKitUploader.h in Headers */ = {isa = PBXBuildFile; fileRef = 483977C7221F68D700A833FF /* TPHealthKitUploader.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		4839781E221F6AB800A833FF /* SwiftyJSON.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48397805221F6AB800A833FF /* SwiftyJSON.swift */; };
 		4839781F221F6AB800A833FF /* TPUploader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48397806221F6AB800A833FF /* TPUploader.swift */; };
@@ -22,7 +24,7 @@
 		48397828221F6AB800A833FF /* HealthKitUploadTypeInsulin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48397812221F6AB800A833FF /* HealthKitUploadTypeInsulin.swift */; };
 		48397829221F6AB800A833FF /* HealthKitUploadType.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48397813221F6AB800A833FF /* HealthKitUploadType.swift */; };
 		4839782A221F6AB800A833FF /* HealthKitUploadTypeWorkout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48397814221F6AB800A833FF /* HealthKitUploadTypeWorkout.swift */; };
-		4839782B221F6AB800A833FF /* HealthKitNotifications.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48397815221F6AB800A833FF /* HealthKitNotifications.swift */; };
+		4839782B221F6AB800A833FF /* TPUploaderNotifications.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48397815221F6AB800A833FF /* TPUploaderNotifications.swift */; };
 		4839782C221F6AB800A833FF /* HealthKitConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48397816221F6AB800A833FF /* HealthKitConfiguration.swift */; };
 		4839782D221F6AB800A833FF /* HealthKitUploader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48397817221F6AB800A833FF /* HealthKitUploader.swift */; };
 		4839782E221F6AB800A833FF /* HealthKitUploadData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48397818221F6AB800A833FF /* HealthKitUploadData.swift */; };
@@ -76,6 +78,8 @@
 		0C4D9DA3E2120D2CB7FDD48D /* Pods-TPHealthKitUploader.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-TPHealthKitUploader.debug.xcconfig"; path = "Target Support Files/Pods-TPHealthKitUploader/Pods-TPHealthKitUploader.debug.xcconfig"; sourceTree = "<group>"; };
 		21A7296A14C67A53FB8E6F23 /* Pods-Example.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Example.debug.xcconfig"; path = "Target Support Files/Pods-Example/Pods-Example.debug.xcconfig"; sourceTree = "<group>"; };
 		482128DD222F6A0D0033D982 /* NSDateExtension.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = NSDateExtension.swift; sourceTree = "<group>"; };
+		482128E0223073D90033D982 /* DebugLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebugLog.swift; sourceTree = "<group>"; };
+		482128E3223076E60033D982 /* TPUploaderStats.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TPUploaderStats.swift; sourceTree = "<group>"; };
 		483977C4221F68D700A833FF /* TPHealthKitUploader.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = TPHealthKitUploader.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		483977C7221F68D700A833FF /* TPHealthKitUploader.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = TPHealthKitUploader.h; sourceTree = "<group>"; };
 		483977C8221F68D700A833FF /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
@@ -92,7 +96,7 @@
 		48397812221F6AB800A833FF /* HealthKitUploadTypeInsulin.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = HealthKitUploadTypeInsulin.swift; sourceTree = "<group>"; };
 		48397813221F6AB800A833FF /* HealthKitUploadType.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = HealthKitUploadType.swift; sourceTree = "<group>"; };
 		48397814221F6AB800A833FF /* HealthKitUploadTypeWorkout.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = HealthKitUploadTypeWorkout.swift; sourceTree = "<group>"; };
-		48397815221F6AB800A833FF /* HealthKitNotifications.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = HealthKitNotifications.swift; sourceTree = "<group>"; };
+		48397815221F6AB800A833FF /* TPUploaderNotifications.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = TPUploaderNotifications.swift; sourceTree = "<group>"; };
 		48397816221F6AB800A833FF /* HealthKitConfiguration.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = HealthKitConfiguration.swift; sourceTree = "<group>"; };
 		48397817221F6AB800A833FF /* HealthKitUploader.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = HealthKitUploader.swift; sourceTree = "<group>"; };
 		48397818221F6AB800A833FF /* HealthKitUploadData.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = HealthKitUploadData.swift; sourceTree = "<group>"; };
@@ -140,6 +144,23 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		482128DF223073AC0033D982 /* Service */ = {
+			isa = PBXGroup;
+			children = (
+				48397808221F6AB800A833FF /* ServiceAPI.swift */,
+				48397809221F6AB800A833FF /* TPTimeZoneTracker.swift */,
+			);
+			path = Service;
+			sourceTree = "<group>";
+		};
+		482128E2223073DF0033D982 /* Misc */ = {
+			isa = PBXGroup;
+			children = (
+				482128E0223073D90033D982 /* DebugLog.swift */,
+			);
+			path = Misc;
+			sourceTree = "<group>";
+		};
 		483977BA221F68D700A833FF = {
 			isa = PBXGroup;
 			children = (
@@ -166,11 +187,13 @@
 				4839780A221F6AB800A833FF /* Extensions */,
 				4839780E221F6AB800A833FF /* HealthKit */,
 				48397804221F6AB800A833FF /* ThirdParty */,
-				48397808221F6AB800A833FF /* ServiceAPI.swift */,
-				48397809221F6AB800A833FF /* TPTimeZoneTracker.swift */,
+				482128DF223073AC0033D982 /* Service */,
+				482128E2223073DF0033D982 /* Misc */,
 				48397806221F6AB800A833FF /* TPUploader.swift */,
 				48397807221F6AB800A833FF /* TPUploaderConfigInfo.swift */,
 				483977C7221F68D700A833FF /* TPHealthKitUploader.h */,
+				482128E3223076E60033D982 /* TPUploaderStats.swift */,
+				48397815221F6AB800A833FF /* TPUploaderNotifications.swift */,
 				483977C8221F68D700A833FF /* Info.plist */,
 			);
 			path = TPHealthKitUploader;
@@ -199,7 +222,6 @@
 			isa = PBXGroup;
 			children = (
 				4839780F221F6AB800A833FF /* Types */,
-				48397815221F6AB800A833FF /* HealthKitNotifications.swift */,
 				48397816221F6AB800A833FF /* HealthKitConfiguration.swift */,
 				48397817221F6AB800A833FF /* HealthKitUploader.swift */,
 				48397818221F6AB800A833FF /* HealthKitUploadData.swift */,
@@ -459,7 +481,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				48397823221F6AB800A833FF /* UIApplicationExtension.swift in Sources */,
-				4839782B221F6AB800A833FF /* HealthKitNotifications.swift in Sources */,
+				4839782B221F6AB800A833FF /* TPUploaderNotifications.swift in Sources */,
+				482128E1223073D90033D982 /* DebugLog.swift in Sources */,
 				48397824221F6AB800A833FF /* HKExtensions.swift in Sources */,
 				48397826221F6AB800A833FF /* HealthKitUploadTypeCarb.swift in Sources */,
 				482128DE222F6A0D0033D982 /* NSDateExtension.swift in Sources */,
@@ -470,6 +493,7 @@
 				48397829221F6AB800A833FF /* HealthKitUploadType.swift in Sources */,
 				4839781E221F6AB800A833FF /* SwiftyJSON.swift in Sources */,
 				48397821221F6AB800A833FF /* ServiceAPI.swift in Sources */,
+				482128E4223076E60033D982 /* TPUploaderStats.swift in Sources */,
 				48397828221F6AB800A833FF /* HealthKitUploadTypeInsulin.swift in Sources */,
 				48397833221F6AB800A833FF /* HealthKitUploadReader.swift in Sources */,
 				4839782A221F6AB800A833FF /* HealthKitUploadTypeWorkout.swift in Sources */,

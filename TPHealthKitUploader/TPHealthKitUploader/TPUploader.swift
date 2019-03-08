@@ -15,11 +15,6 @@
 
 import Foundation
 
-func DDLogVerbose(_ str: String) { TPUploader.sharedInstance?.config.logVerbose(str) }
-func DDLogInfo(_ str: String) { TPUploader.sharedInstance?.config.logInfo(str) }
-func DDLogDebug(_ str: String) { TPUploader.sharedInstance?.config.logDebug(str) }
-func DDLogError(_ str: String) { TPUploader.sharedInstance?.config.logError(str) }
-
 public class TPUploader {
     
     /// Nil if not instance not configured yet...
@@ -47,7 +42,7 @@ public class TPUploader {
     var tzTracker: TPTimeZoneTracker
     
     //
-    // MARK: - misc methods
+    // MARK: - public methods
     //
     
     /// Call this whenever the current user changes, after login/logout, token refresh(?), ...
@@ -93,5 +88,14 @@ public class TPUploader {
 
     public func curHKUserName() -> String? {
         return HealthKitConfiguration.sharedInstance.healthKitUserTidepoolUsername()
+    }
+    
+    public func currentUploadStats() -> [TPUploaderStats] {
+        let uploadMgr = HealthKitUploadManager.sharedInstance
+        return uploadMgr.statsForMode(HealthKitUploadReader.Mode.HistoricalAll)
+    }
+
+    public func historicalUploadStats() -> [TPUploaderStats] {        let uploadMgr = HealthKitUploadManager.sharedInstance
+        return uploadMgr.statsForMode(HealthKitUploadReader.Mode.Current)
     }
 }
