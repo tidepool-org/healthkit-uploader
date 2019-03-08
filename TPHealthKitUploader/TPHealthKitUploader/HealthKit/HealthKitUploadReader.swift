@@ -18,26 +18,14 @@ import HealthKit
 // NOTE: These delegate methods are usually called indirectly from HealthKit or a URLSession delegate, on a background queue, not on main thread
 protocol HealthKitUploadReaderDelegate: class {
     func uploadReaderDidStartReading(reader: HealthKitUploadReader)
-    func uploadReader(reader: HealthKitUploadReader, didStopReading reason: HealthKitUploadReader.StoppedReason)
+    func uploadReader(reader: HealthKitUploadReader, didStopReading reason: TPUploader.StoppedReason)
     func uploadReader(reader: HealthKitUploadReader, didReadDataForUpload uploadData: HealthKitUploadData, error: Error?)
 }
 
 /// There can be an instance of this class for each mode for each type of upload object.
 class HealthKitUploadReader: NSObject {
-    enum Mode: String {
-        case Current = "Current"
-        case HistoricalAll = "HistoricalAll"
-        case HistoricalLastTwoWeeks = "HistoricalLastTwoWeeks"
-    }
     
-    enum StoppedReason {
-        case error(error: Error)
-        case background
-        case turnOffInterface
-        case noResultsFromQuery
-    }
-
-    init(type: HealthKitUploadType, mode: Mode) {
+    init(type: HealthKitUploadType, mode: TPUploader.Mode) {
         DDLogVerbose("\(#function)")
         
         self.uploadType = type
@@ -49,14 +37,14 @@ class HealthKitUploadReader: NSObject {
     weak var delegate: HealthKitUploadReaderDelegate?
 
     fileprivate(set) var uploadType: HealthKitUploadType
-    fileprivate(set) var mode: Mode
+    fileprivate(set) var mode: TPUploader.Mode
     fileprivate(set) var isReading = false
     var currentUserId: String?
 
     func isResumable() -> Bool {
         var isResumable = false
 
-        if self.mode == HealthKitUploadReader.Mode.Current {
+        if self.mode == TPUploader.Mode.Current {
             isResumable = true
         } else {
             if let _ = UserDefaults.standard.object(forKey: HealthKitSettings.prefixedKey(prefix: self.mode.rawValue, type: uploadType.typeName, key: HealthKitSettings.UploadQueryStartDateKey)),
@@ -93,7 +81,7 @@ class HealthKitUploadReader: NSObject {
         self.readMore()
     }
     
-    func stopReading(reason: StoppedReason) {
+    func stopReading(reason: TPUploader.StoppedReason) {
         DDLogVerbose("type: \(uploadType.typeName), mode: \(mode.rawValue)")
 
         guard self.isReading else {
@@ -125,14 +113,11 @@ class HealthKitUploadReader: NSObject {
         var endDate = UserDefaults.standard.object(forKey: HealthKitSettings.prefixedKey(prefix: self.mode.rawValue, type: uploadType.typeName, key: HealthKitSettings.UploadQueryEndDateKey)) as? Date
         if (startDate == nil || endDate == nil) {
             DDLogInfo("startDate nil: \(startDate == nil), endDate nil: \(endDate == nil)")
-            if (self.mode == HealthKitUploadReader.Mode.Current) {
+            if (self.mode == TPUploader.Mode.Current) {
                 endDate = Date.distantFuture
                 // try setting current mode to 4 hours prior in case there are some straggling events that will be posted for the current day. E.g., in the case of Loop, there is a 3 hour delay in getting some items posted...
                 startDate = Date().addingTimeInterval(-60 * 60 * 4)
-            } else if (self.mode == HealthKitUploadReader.Mode.HistoricalLastTwoWeeks) {
-                endDate = Date().addingTimeInterval(-60 * 60 * 4)
-                startDate = endDate!.addingTimeInterval(-60 * 60 * 24 * 14) // Two weeks ago
-            } else if (self.mode == HealthKitUploadReader.Mode.HistoricalAll) {
+            } else if (self.mode == TPUploader.Mode.HistoricalAll) {
                 endDate = Date().addingTimeInterval(-60 * 60 * 4)
                 startDate = Date.distantPast
             }

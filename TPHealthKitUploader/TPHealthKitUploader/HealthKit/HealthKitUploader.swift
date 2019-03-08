@@ -22,7 +22,7 @@ protocol HealthKitSampleUploaderDelegate: class {
 // TODO: uploader - we should avoid using file based POSTs when in foreground (probably faster!? and simpler)
 
 class HealthKitUploader: NSObject, URLSessionDelegate, URLSessionTaskDelegate, URLSessionDataDelegate {
-    init(mode: HealthKitUploadReader.Mode, uploadType: HealthKitUploadType) {
+    init(mode: TPUploader.Mode, uploadType: HealthKitUploadType) {
         DDLogVerbose("type: \(uploadType.typeName), mode: \(mode.rawValue)")
         
         self.mode = mode
@@ -34,7 +34,7 @@ class HealthKitUploader: NSObject, URLSessionDelegate, URLSessionTaskDelegate, U
         self.ensureUploadSession(isBackground: true)
     }
 
-    private(set) var mode: HealthKitUploadReader.Mode
+    private(set) var mode: TPUploader.Mode
     private(set) var typeString: String
     weak var delegate: HealthKitSampleUploaderDelegate?
     

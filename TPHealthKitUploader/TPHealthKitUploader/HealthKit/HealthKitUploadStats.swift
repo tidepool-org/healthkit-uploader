@@ -16,7 +16,7 @@
 import HealthKit
 
 class HealthKitUploadStats: NSObject {
-    init(type: HealthKitUploadType, mode: HealthKitUploadReader.Mode) {
+    init(type: HealthKitUploadType, mode: TPUploader.Mode) {
         DDLogVerbose("\(#function)")
         self.stats = TPUploaderStats()
         self.uploadType = type
@@ -31,7 +31,7 @@ class HealthKitUploadStats: NSObject {
     
     fileprivate(set) var uploadType: HealthKitUploadType
     fileprivate(set) var uploadTypeName: String
-    fileprivate(set) var mode: HealthKitUploadReader.Mode
+    fileprivate(set) var mode: TPUploader.Mode
 
     func resetPersistentState() {
         DDLogVerbose("\(#function)")
@@ -107,7 +107,7 @@ class HealthKitUploadStats: NSObject {
         self.stats.lastSuccessfulUploadLatestSampleTime = self.stats.lastUploadAttemptLatestSampleTime
         UserDefaults.standard.set(self.stats.lastSuccessfulUploadLatestSampleTime, forKey: HealthKitSettings.prefixedKey(prefix: self.mode.rawValue, type: self.uploadTypeName, key: HealthKitSettings.StatsLastSuccessfulUploadLatestSampleTimeKey))
 
-        if self.mode != HealthKitUploadReader.Mode.Current {
+        if self.mode != TPUploader.Mode.Current {
             if self.stats.totalDaysHistorical > 0 {
                 self.stats.currentDayHistorical = self.stats.startDateHistoricalSamples.differenceInDays(self.stats.lastSuccessfulUploadLatestSampleTime)
             }

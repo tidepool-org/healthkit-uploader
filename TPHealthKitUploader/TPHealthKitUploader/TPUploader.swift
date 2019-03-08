@@ -42,6 +42,21 @@ public class TPUploader {
     var tzTracker: TPTimeZoneTracker
     
     //
+    // MARK: - public enums
+    //
+    enum Mode: String {
+        case Current = "Current"
+        case HistoricalAll = "HistoricalAll"
+    }
+    
+    enum StoppedReason {
+        case error(error: Error)
+        case background
+        case turnOffInterface
+        case noResultsFromQuery
+    }
+
+    //
     // MARK: - public methods
     //
     
@@ -92,10 +107,10 @@ public class TPUploader {
     
     public func currentUploadStats() -> [TPUploaderStats] {
         let uploadMgr = HealthKitUploadManager.sharedInstance
-        return uploadMgr.statsForMode(HealthKitUploadReader.Mode.HistoricalAll)
+        return uploadMgr.statsForMode(TPUploader.Mode.HistoricalAll)
     }
 
     public func historicalUploadStats() -> [TPUploaderStats] {        let uploadMgr = HealthKitUploadManager.sharedInstance
-        return uploadMgr.statsForMode(HealthKitUploadReader.Mode.Current)
+        return uploadMgr.statsForMode(TPUploader.Mode.Current)
     }
 }

@@ -80,8 +80,8 @@ class HealthKitConfiguration
         DDLogVerbose("\(#function)")
 
         if let currentUserId = config.currentUserId() {
-            // Always start uploading HealthKitUploadReader.Mode.Current samples when interface is turned on
-            HealthKitUploadManager.sharedInstance.startUploading(mode: HealthKitUploadReader.Mode.Current, currentUserId: currentUserId)
+            // Always start uploading TPUploader.Mode.Current samples when interface is turned on
+            HealthKitUploadManager.sharedInstance.startUploading(mode: TPUploader.Mode.Current, currentUserId: currentUserId)
 
             // Resume uploading other samples too, if resumable
             // TODO: uploader UI - Revisit this. Do we want even the non-current mode readers/uploads to resume automatically? Or should that be behind some explicit UI
@@ -97,7 +97,7 @@ class HealthKitConfiguration
     private func turnOffInterface() {
         DDLogVerbose("\(#function)")
 
-        HealthKitUploadManager.sharedInstance.stopUploading(reason: HealthKitUploadReader.StoppedReason.turnOffInterface)
+        HealthKitUploadManager.sharedInstance.stopUploading(reason: TPUploader.StoppedReason.turnOffInterface)
     }
 
     //

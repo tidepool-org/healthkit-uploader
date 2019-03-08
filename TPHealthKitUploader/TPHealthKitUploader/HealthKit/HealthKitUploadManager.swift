@@ -41,17 +41,16 @@ class HealthKitUploadManager:
             self.uploadType = type
             DDLogVerbose("helper type: \(uploadType.typeName)")
             // init reader, uploader, stats for the different modes
-            self.initForMode(HealthKitUploadReader.Mode.Current)
-            self.initForMode(HealthKitUploadReader.Mode.HistoricalLastTwoWeeks)
-            self.initForMode(HealthKitUploadReader.Mode.HistoricalAll)
+            self.initForMode(TPUploader.Mode.Current)
+            self.initForMode(TPUploader.Mode.HistoricalAll)
         }
         
-        private var readers: [HealthKitUploadReader.Mode: HealthKitUploadReader] = [:]
-        private var uploaders: [HealthKitUploadReader.Mode: HealthKitUploader] = [:]
-        private(set) var stats: [HealthKitUploadReader.Mode: HealthKitUploadStats] = [:]
-        private(set) var isUploading: [HealthKitUploadReader.Mode: Bool] = [:]
+        private var readers: [TPUploader.Mode: HealthKitUploadReader] = [:]
+        private var uploaders: [TPUploader.Mode: HealthKitUploader] = [:]
+        private(set) var stats: [TPUploader.Mode: HealthKitUploadStats] = [:]
+        private(set) var isUploading: [TPUploader.Mode: Bool] = [:]
         
-        private func initForMode(_ mode: HealthKitUploadReader.Mode) {
+        private func initForMode(_ mode: TPUploader.Mode) {
             self.readers[mode] = HealthKitUploadReader(type: self.uploadType, mode: mode)
             self.readers[mode]!.delegate = self
             self.uploaders[mode] = HealthKitUploader(mode: mode, uploadType: self.uploadType)
@@ -60,13 +59,13 @@ class HealthKitUploadManager:
             self.isUploading[mode] = false
         }
         
-        func resetPersistentState(mode: HealthKitUploadReader.Mode) {
+        func resetPersistentState(mode: TPUploader.Mode) {
             DDLogVerbose("helper type: \(uploadType.typeName), mode: \(mode.rawValue)")
             self.readers[mode]!.resetPersistentState()
             self.stats[mode]!.resetPersistentState()
         }
         
-        func startUploading(mode: HealthKitUploadReader.Mode, currentUserId: String) {
+        func startUploading(mode: TPUploader.Mode, currentUserId: String) {
             DDLogVerbose("helper type: \(uploadType.typeName), mode: \(mode.rawValue)")
             
             guard !self.isUploading[mode]! else {
@@ -78,14 +77,14 @@ class HealthKitUploadManager:
             self.readers[mode]!.currentUserId = currentUserId
             self.uploaders[mode]!.cancelTasks() // Cancel any pending tasks (also resets pending state, so we don't get stuck not being able to upload due to early termination or crash wherein the persistent state tracking pending uploads was not reset
             
-            if (mode == HealthKitUploadReader.Mode.Current) {
+            if (mode == TPUploader.Mode.Current) {
                 // Observe new samples for Current mode
                 HealthKitManager.sharedInstance.enableBackgroundDeliverySamplesForType(uploadType)
                 HealthKitManager.sharedInstance.startObservingSamplesForType(uploadType, self.uploadObservationHandler)
             }
             
             var isFreshHistoricalUpload = false
-            if mode == HealthKitUploadReader.Mode.HistoricalAll || mode == HealthKitUploadReader.Mode.HistoricalLastTwoWeeks {
+            if mode == TPUploader.Mode.HistoricalAll {
                 isFreshHistoricalUpload = UserDefaults.standard.object(forKey: HealthKitSettings.prefixedKey(prefix: mode.rawValue, type: uploadType.typeName, key: HealthKitSettings.UploadQueryStartDateKey)) == nil
             }
             
@@ -93,19 +92,9 @@ class HealthKitUploadManager:
             self.readers[mode]!.startReading()
             
             if (isFreshHistoricalUpload) {
-                if (mode == HealthKitUploadReader.Mode.HistoricalAll) {
+                if (mode == TPUploader.Mode.HistoricalAll) {
                     // Asynchronously find the start date
                     self.stats[mode]!.updateHistoricalSamplesDateRangeFromHealthKitAsync()
-                } else if (mode == HealthKitUploadReader.Mode.HistoricalLastTwoWeeks) {
-                    // The start/end dates for reading HistoricalLastTwoWeeks data are guaranteed to be written by now, so, read those and update the stats
-                    let startDate = UserDefaults.standard.object(forKey: HealthKitSettings.prefixedKey(prefix: mode.rawValue, type: uploadType.typeName, key: HealthKitSettings.UploadQueryStartDateKey)) as? Date
-                    let endDate = UserDefaults.standard.object(forKey: HealthKitSettings.prefixedKey(prefix: mode.rawValue, type: uploadType.typeName, key: HealthKitSettings.UploadQueryEndDateKey)) as? Date
-                    if let startDate = startDate,
-                        let endDate = endDate {
-                        self.stats[mode]!.updateHistoricalSamplesDateRange(startDate: startDate, endDate: endDate)
-                    } else {
-                        DDLogError("Unexpected nil startDate or endDate when starting upload. Mode: \(mode)")
-                    }
                 }
             }
  
@@ -118,7 +107,7 @@ class HealthKitUploadManager:
             NotificationCenter.default.post(Notification(name: Notification.Name(rawValue: TPUploaderNotifications.TurnOnUploader), object: mode, userInfo: uploadInfo))
         }
  
-        func stopUploading(mode: HealthKitUploadReader.Mode, reason: HealthKitUploadReader.StoppedReason) {
+        func stopUploading(mode: TPUploader.Mode, reason: TPUploader.StoppedReason) {
             DDLogVerbose("helper type: \(uploadType.typeName), mode: \(mode.rawValue)")
             
             guard self.isUploading[mode]! else {
@@ -134,7 +123,7 @@ class HealthKitUploadManager:
             self.readers[mode]!.stopReading(reason: reason)
             self.uploaders[mode]!.cancelTasks()
             
-            if (mode == HealthKitUploadReader.Mode.Current) {
+            if (mode == TPUploader.Mode.Current) {
                 HealthKitManager.sharedInstance.stopObservingSamplesForType(self.uploadType)
             } else {
                 switch reason {
@@ -157,17 +146,13 @@ class HealthKitUploadManager:
             NotificationCenter.default.post(Notification(name: Notification.Name(rawValue: TPUploaderNotifications.TurnOffUploader), object: mode, userInfo: uploadInfo))
         }
 
-        func stopUploading(reason: HealthKitUploadReader.StoppedReason) {
+        func stopUploading(reason: TPUploader.StoppedReason) {
             DDLogVerbose("helper type: \(uploadType.typeName)")
-            var mode = HealthKitUploadReader.Mode.Current
+            var mode = TPUploader.Mode.Current
             if (self.isUploading[mode]!) {
                 self.stopUploading(mode: mode, reason: reason)
             }
-            mode = HealthKitUploadReader.Mode.HistoricalLastTwoWeeks
-            if (self.isUploading[mode]!) {
-                self.stopUploading(mode: mode, reason: reason)
-            }
-            mode = HealthKitUploadReader.Mode.HistoricalAll
+            mode = TPUploader.Mode.HistoricalAll
             if (self.isUploading[mode]!) {
                 self.stopUploading(mode: mode, reason: reason)
             }
@@ -176,23 +161,21 @@ class HealthKitUploadManager:
         func resumeUploadingIfResumable(currentUserId: String?) {
             DDLogVerbose("helper type: \(uploadType.typeName)")
             
-            var mode = HealthKitUploadReader.Mode.Current
+            var mode = TPUploader.Mode.Current
             self.resumeUploadingIfResumable(mode: mode, currentUserId: currentUserId)
-            mode = HealthKitUploadReader.Mode.HistoricalAll
-            self.resumeUploadingIfResumable(mode: mode, currentUserId: currentUserId)
-            mode = HealthKitUploadReader.Mode.HistoricalLastTwoWeeks
+            mode = TPUploader.Mode.HistoricalAll
             self.resumeUploadingIfResumable(mode: mode, currentUserId: currentUserId)
         }
 
-        private func isResumable(mode: HealthKitUploadReader.Mode) -> Bool {
+        private func isResumable(mode: TPUploader.Mode) -> Bool {
             return self.readers[mode]!.isResumable()
         }
         
-        func resumeUploadingIfResumable(mode: HealthKitUploadReader.Mode, currentUserId: String?) {
+        func resumeUploadingIfResumable(mode: TPUploader.Mode, currentUserId: String?) {
             DDLogVerbose("helper type: \(uploadType.typeName), mode: \(mode.rawValue)")
             
             if (currentUserId != nil && !self.isUploading[mode]! && self.isResumable(mode: mode)) {
-                if mode == HealthKitUploadReader.Mode.Current {
+                if mode == TPUploader.Mode.Current {
                     // Always OK to resume Current
                     self.startUploading(mode: mode, currentUserId: currentUserId!)
                 } else {
@@ -212,7 +195,7 @@ class HealthKitUploadManager:
             DispatchQueue.main.async {
                 DDLogInfo("uploadObservationHandler on main thread")
                 
-                let mode = HealthKitUploadReader.Mode.Current
+                let mode = TPUploader.Mode.Current
                 guard self.isUploading[mode]! else {
                     DDLogInfo("Not currently uploading, ignoring")
                     return
@@ -275,7 +258,7 @@ class HealthKitUploadManager:
                 }
                 
                 var keepReading = cancelled || completed
-                if uploader.mode == HealthKitUploadReader.Mode.Current && UIApplication.shared.applicationState == UIApplication.State.background {
+                if uploader.mode == TPUploader.Mode.Current && UIApplication.shared.applicationState == UIApplication.State.background {
                     if completed {
                         //TODO: ask Mark why? Doesn't this stop current uploads if the app is in the background for an extended time?
                         keepReading = false // Just do one upload batch per background task for Current mode
@@ -291,9 +274,9 @@ class HealthKitUploadManager:
                 }
                 else {
                     if let error = error {
-                        self.readers[uploader.mode]!.stopReading(reason: HealthKitUploadReader.StoppedReason.error(error: error))
+                        self.readers[uploader.mode]!.stopReading(reason: TPUploader.StoppedReason.error(error: error))
                     } else {
-                        self.readers[uploader.mode]!.stopReading(reason: HealthKitUploadReader.StoppedReason.noResultsFromQuery)
+                        self.readers[uploader.mode]!.stopReading(reason: TPUploader.StoppedReason.noResultsFromQuery)
                     }
                 }
             }
@@ -305,27 +288,27 @@ class HealthKitUploadManager:
         
         func uploadReaderDidStartReading(reader: HealthKitUploadReader) {
             // Register background task for Current mode, if in background
-            if reader.mode == HealthKitUploadReader.Mode.Current && UIApplication.shared.applicationState == UIApplication.State.background {
+            if reader.mode == TPUploader.Mode.Current && UIApplication.shared.applicationState == UIApplication.State.background {
                 self.beginCurrentSamplesUploadBackgroundTask()
             }
         }
         
         // NOTE: This is usually called on a background queue, not on main thread
-        func uploadReader(reader: HealthKitUploadReader, didStopReading reason: HealthKitUploadReader.StoppedReason) {
+        func uploadReader(reader: HealthKitUploadReader, didStopReading reason: TPUploader.StoppedReason) {
             DDLogVerbose("helper type: \(uploadType.typeName), mode: \(reader.mode.rawValue)")
             
             DispatchQueue.main.async {
                 DDLogInfo("didStopReading on main thread")
                 
                 // End background task for Current mode, if in background
-                if reader.mode == HealthKitUploadReader.Mode.Current && UIApplication.shared.applicationState == UIApplication.State.background {
+                if reader.mode == TPUploader.Mode.Current && UIApplication.shared.applicationState == UIApplication.State.background {
                     self.endCurrentSamplesUploadBackgroundTask()
                 }
                 
-                // If the reader mode is HealthKitUploadReader.Mode.Current, then we don't need to stop uploader when the reader
+                // If the reader mode is TPUploader.Mode.Current, then we don't need to stop uploader when the reader
                 // stopped reading, we should continue to try reading/uploading again when we observe more samples. Only stop uploading if
-                // mode is *not* HealthKitUploadReader.Mode.Current
-                if (reader.mode != HealthKitUploadReader.Mode.Current) {
+                // mode is *not* TPUploader.Mode.Current
+                if (reader.mode != TPUploader.Mode.Current) {
                     if (self.isUploading[reader.mode]!) {
                         self.stopUploading(mode: reader.mode, reason: reason)
                     }
@@ -343,7 +326,7 @@ class HealthKitUploadManager:
                 
                 if let error = error {
                     DDLogError("Stop reading most recent samples. Mode: \(reader.mode). Error: \(String(describing: error))")
-                    reader.stopReading(reason: HealthKitUploadReader.StoppedReason.error(error: error))
+                    reader.stopReading(reason: TPUploader.StoppedReason.error(error: error))
                 } else {
                     guard self.isUploading[reader.mode]! else {
                         DDLogError("Ignore didReadDataForUpload, not currently uploading. Mode: \(reader.mode)")
@@ -417,14 +400,14 @@ class HealthKitUploadManager:
                 try self.uploaders[reader.mode]!.startUploadSessionTasks(with: uploadData)
             } catch let error {
                 DDLogError("Failed to prepare upload. Mode: \(reader.mode). Error: \(String(describing: error))")
-                reader.stopReading(reason: HealthKitUploadReader.StoppedReason.error(error: error))
+                reader.stopReading(reason: TPUploader.StoppedReason.error(error: error))
             }
         }
         
         fileprivate func handleNoResults(reader: HealthKitUploadReader) {
             DDLogVerbose("helper type: \(uploadType.typeName), mode: \(reader.mode.rawValue), type: \(reader.uploadType.typeName)")
             
-            reader.stopReading(reason: HealthKitUploadReader.StoppedReason.noResultsFromQuery)
+            reader.stopReading(reason: TPUploader.StoppedReason.noResultsFromQuery)
         }
         
         fileprivate func promoteLastAnchor(reader: HealthKitUploadReader) {
@@ -470,7 +453,7 @@ class HealthKitUploadManager:
     }
 
     /// Return array of stats per type for specified mode
-    func statsForMode(_ mode: HealthKitUploadReader.Mode) -> [TPUploaderStats] {
+    func statsForMode(_ mode: TPUploader.Mode) -> [TPUploaderStats] {
         //
         var allStats: [TPUploaderStats] = []
         for helper in uploadHelpers {
@@ -479,7 +462,7 @@ class HealthKitUploadManager:
         return allStats
     }
 
-    func isUploadInProgressForMode(_ mode: HealthKitUploadReader.Mode) -> Bool {
+    func isUploadInProgressForMode(_ mode: TPUploader.Mode) -> Bool {
         var result = false
         for helper in uploadHelpers {
             if helper.isUploading[mode]! {
@@ -491,7 +474,7 @@ class HealthKitUploadManager:
         return result
     }
  
-    func resetPersistentStateForMode(_ mode: HealthKitUploadReader.Mode) {
+    func resetPersistentStateForMode(_ mode: TPUploader.Mode) {
         for helper in uploadHelpers {
             helper.resetPersistentState(mode: mode)
         }
@@ -501,9 +484,8 @@ class HealthKitUploadManager:
         DDLogVerbose("\(#function)")
 
         for helper in uploadHelpers {
-            helper.resetPersistentState(mode: HealthKitUploadReader.Mode.Current)
-            helper.resetPersistentState(mode: HealthKitUploadReader.Mode.HistoricalLastTwoWeeks)
-            helper.resetPersistentState(mode: HealthKitUploadReader.Mode.HistoricalAll)
+            helper.resetPersistentState(mode: TPUploader.Mode.Current)
+            helper.resetPersistentState(mode: TPUploader.Mode.HistoricalAll)
         }
         
         if switchingHealthKitUsers {
@@ -512,7 +494,7 @@ class HealthKitUploadManager:
         }
     }
     
-    func startUploading(mode: HealthKitUploadReader.Mode, currentUserId: String) {
+    func startUploading(mode: TPUploader.Mode, currentUserId: String) {
         DDLogVerbose("mode: \(mode.rawValue)")
 
         guard HealthKitManager.sharedInstance.isHealthDataAvailable else {
@@ -530,7 +512,7 @@ class HealthKitUploadManager:
         
     }
     
-    func stopUploading(mode: HealthKitUploadReader.Mode, reason: HealthKitUploadReader.StoppedReason) {
+    func stopUploading(mode: TPUploader.Mode, reason: TPUploader.StoppedReason) {
         DDLogVerbose("mode: \(mode.rawValue)")
 
         for helper in uploadHelpers {
@@ -538,7 +520,7 @@ class HealthKitUploadManager:
         }
     }
     
-    func stopUploading(reason: HealthKitUploadReader.StoppedReason) {
+    func stopUploading(reason: TPUploader.StoppedReason) {
         for helper in uploadHelpers {
             helper.stopUploading(reason: reason)
         }
