@@ -14,7 +14,7 @@ Pod::Spec.new do |spec|
   spec.author       = { "Larry" => "larry@tidepool.org" }
   spec.platform     = :ios, "11.0"
   spec.source       = { :git => "https://github.com/tidepool-org/healthkit-uploader.git", :tag => spec.version }
-  spec.source_files  = 'Source'
+  spec.source_files  = 'Source/*.swift', 'Source/*/*.swift', 'Source/*/*/*.swift'
   spec.swift_version = "4.2"
 
 end
