@@ -10,11 +10,11 @@ Pod::Spec.new do |spec|
                    DESC
 
   spec.homepage     = "https://github.com/tidepool-org/healthkit-uploader"
-  spec.license      = { :type => "MIT", :file => "LICENSE" }
+  spec.license      = "BSD"
   spec.author       = { "Larry" => "larry@tidepool.org" }
   spec.platform     = :ios, "11.0"
-  spec.source       = { :git => "https://github.com/tidepool-org/healthkit-uploader", :tag => spec.version }
-  spec.source_files  = "TPHealtKitUploader"
+  spec.source       = { :git => "https://github.com/tidepool-org/healthkit-uploader.git", :tag => spec.version }
+  spec.source_files  = 'Source'
   spec.swift_version = "4.2"
 
 end
