@@ -9,8 +9,13 @@
 import Foundation
 
 public struct TPUploaderStats {
-    init() {
+    init(typeName: String, mode: TPUploader.Mode) {
+        self.typeName = typeName
+        self.mode = mode
     }
+    
+    public let typeName: String
+    public let mode: TPUploader.Mode
     
     // Used in menu:
     public var hasSuccessfullyUploaded = false

@@ -13,11 +13,11 @@
 * not, you can obtain one from Tidepool Project at tidepool.org.
 */
 
-enum TPUploaderNotifications {
+public enum TPUploaderNotifications {
     /// Updated is always posted just before each of the others
-    static let Updated = "HealthKitDataUpload-Updated"
+    public static let Updated = "HealthKitDataUpload-Updated"
     
-    static let UploadSuccessful = "HealthKitDataUpload-UploadSuccessful"
-    static let TurnOnUploader = "HealthKitDataUpload-TurnOnUploader"
-    static let TurnOffUploader = "HealthKitDataUpload-TurnOffUploader"
+    public static let UploadSuccessful = "HealthKitDataUpload-UploadSuccessful"
+    public static let TurnOnUploader = "HealthKitDataUpload-TurnOnUploader"
+    public static let TurnOffUploader = "HealthKitDataUpload-TurnOffUploader"
 }

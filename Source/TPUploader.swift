@@ -44,12 +44,12 @@ public class TPUploader {
     //
     // MARK: - public enums
     //
-    enum Mode: String {
+    public enum Mode: String {
         case Current = "Current"
         case HistoricalAll = "HistoricalAll"
     }
     
-    enum StoppedReason {
+    public enum StoppedReason {
         case error(error: Error)
         case background
         case turnOffInterface
@@ -111,10 +111,10 @@ public class TPUploader {
     
     public func currentUploadStats() -> [TPUploaderStats] {
         let uploadMgr = HealthKitUploadManager.sharedInstance
-        return uploadMgr.statsForMode(TPUploader.Mode.HistoricalAll)
+        return uploadMgr.statsForMode(TPUploader.Mode.Current)
     }
 
     public func historicalUploadStats() -> [TPUploaderStats] {        let uploadMgr = HealthKitUploadManager.sharedInstance
-        return uploadMgr.statsForMode(TPUploader.Mode.Current)
+        return uploadMgr.statsForMode(TPUploader.Mode.HistoricalAll)
     }
 }

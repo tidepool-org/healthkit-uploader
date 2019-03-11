@@ -18,7 +18,7 @@ import HealthKit
 class HealthKitUploadStats: NSObject {
     init(type: HealthKitUploadType, mode: TPUploader.Mode) {
         DDLogVerbose("\(#function)")
-        self.stats = TPUploaderStats()
+        self.stats = TPUploaderStats(typeName: type.typeName, mode: mode)
         self.uploadType = type
         self.uploadTypeName = type.typeName
         self.mode = mode

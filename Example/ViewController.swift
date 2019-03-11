@@ -40,7 +40,9 @@ class ViewController: UIViewController {
         updateButtonStates()
         let notificationCenter = NotificationCenter.default
         notificationCenter.addObserver(self, selector: #selector(ViewController.textFieldDidChange), name: UITextField.textDidChangeNotification, object: nil)
-        self.serviceButton.setTitle(APIConnector.connector().currentService, for: .normal)
+        NotificationCenter.default.addObserver(self, selector: #selector(ViewController.handleStatsUpdatedNotification(_:)), name: Notification.Name(rawValue: TPUploaderNotifications.Updated), object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(ViewController.handleTurnOffUploaderNotification(_:)), name: Notification.Name(rawValue: TPUploaderNotifications.TurnOffUploader), object: nil)
+      self.serviceButton.setTitle(APIConnector.connector().currentService, for: .normal)
     }
     private var hkUploader: TPUploader!
     
@@ -80,6 +82,85 @@ class ViewController: UIViewController {
         self.configureAsLoggedIn(false)
     }
     
+    //
+    // MARK: - Status update
+    //
+    
+    @objc func handleTurnOffUploaderNotification(_ notification: Notification) {
+        DispatchQueue.main.async {
+            DispatchQueue.main.async {
+                //let mode = notification.object as! HealthKitUploadReader.Mode
+                let userInfo = notification.userInfo!
+                let mode = userInfo["mode"] as! TPUploader.Mode
+                let type = userInfo["type"] as! String
+                let reason = userInfo["reason"] as! TPUploader.StoppedReason
+                DDLogInfo("Type: \(type), Mode: \(mode), Reason: \(reason)")
+                if mode == TPUploader.Mode.HistoricalAll {
+                    // Update status
+                    switch reason {
+                    case .turnOffInterface:
+                        break
+                    case .noResultsFromQuery:
+                        DDLogInfo("TODO: self.checkForComplete")
+                        //self.checkForComplete()
+                        break
+                    case .error(let error):
+                        self.lastErrorString = String("\(type) upload error: \(error.localizedDescription.prefix(50))")
+                        DDLogInfo("TODO: set error, self.checkForComplete")
+                        //self.healthStatusLine2.text = self.lastErrorString
+                        //self.checkForComplete()
+                        break
+                    default:
+                        break
+                    }
+                }
+
+            }
+        }
+    }
+    private var lastErrorString: String?
+    
+    @objc func handleStatsUpdatedNotification(_ notification: Notification) {
+        DispatchQueue.main.async {
+            //let mode = notification.object as! HealthKitUploadReader.Mode
+            let userInfo = notification.userInfo!
+            let mode = userInfo["mode"] as! TPUploader.Mode
+            let type = userInfo["type"] as! String
+            DDLogInfo("Type: \(type), Mode: \(mode)")
+            if mode == TPUploader.Mode.HistoricalAll {
+                self.updateHistoricalStats()
+            } else {
+                self.updateCurrentStats()
+            }
+        }
+    }
+
+    func updateCurrentStats() {
+        DDLogInfo("Current stats update:")
+        let currentStats = hkUploader.currentUploadStats()
+        for stat in currentStats {
+            if stat.hasSuccessfullyUploaded {
+                DDLogInfo("Mode: \(stat.mode.rawValue)")
+                DDLogInfo("Type: \(stat.typeName)")
+                DDLogInfo("Last successful upload time: \(stat.lastSuccessfulUploadTime)")
+                DDLogInfo("")
+            }
+        }
+    }
+    
+    func updateHistoricalStats() {
+        DDLogInfo("Historical stats update:")
+        let historicalStats = hkUploader.historicalUploadStats()
+        for stat in historicalStats {
+            if stat.hasSuccessfullyUploaded {
+                DDLogInfo("Mode: \(stat.mode.rawValue)")
+                DDLogInfo("Type: \(stat.typeName)")
+                DDLogInfo("Current day: \(stat.currentDayHistorical)")
+                DDLogInfo("Total days: \(stat.totalDaysHistorical)")
+                DDLogInfo("")
+            }
+        }
+    }
     //
     // MARK: - Login
     //
