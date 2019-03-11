@@ -22,7 +22,7 @@ public class TPUploader {
     
     /// Configures framework
     public init(_ config: TPUploaderConfigInfo) {
-        DDLogInfo("\(#function)")
+        DDLogInfo("TPUploader init - version 1.0.0")
         // TODO: fail if already configured! Should probably just have the init private, and provide access via a connector() method like other singletons that require initialization data.
         self.config = config
         self.service = TPUploaderServiceAPI(config)
@@ -56,6 +56,10 @@ public class TPUploader {
         case noResultsFromQuery
     }
 
+    public func version() -> String {
+        return "1.0.0-alpha"
+    }
+    
     //
     // MARK: - public methods
     //

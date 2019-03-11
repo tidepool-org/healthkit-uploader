@@ -1,6 +1,0 @@
-framework module Pods_TPHealthKitUploader {
-  umbrella header "Pods-TPHealthKitUploader-umbrella.h"
-
-  export *
-  module * { export * }
-}
