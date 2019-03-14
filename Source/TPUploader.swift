@@ -117,4 +117,8 @@ public class TPUploader {
     public func historicalUploadStats() -> [TPUploaderStats] {        let uploadMgr = HealthKitUploadManager.sharedInstance
         return uploadMgr.statsForMode(TPUploader.Mode.HistoricalAll)
     }
+    
+    public func isUploadInProgressForMode(_ mode: TPUploader.Mode) -> Bool {
+        return HealthKitUploadManager.sharedInstance.isUploadInProgressForMode(mode)
+    }
 }

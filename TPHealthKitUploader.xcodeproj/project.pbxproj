@@ -10,6 +10,8 @@
 		482128DE222F6A0D0033D982 /* NSDateExtension.swift in Sources */ = {isa = PBXBuildFile; fileRef = 482128DD222F6A0D0033D982 /* NSDateExtension.swift */; };
 		482128E1223073D90033D982 /* DebugLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 482128E0223073D90033D982 /* DebugLog.swift */; };
 		482128E4223076E60033D982 /* TPUploaderStats.swift in Sources */ = {isa = PBXBuildFile; fileRef = 482128E3223076E60033D982 /* TPUploaderStats.swift */; };
+		482129A52236C34F0033D982 /* SyncViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 482129A42236C34F0033D982 /* SyncViewController.swift */; };
+		482129A72236D44B0033D982 /* NSDateExtension.swift in Sources */ = {isa = PBXBuildFile; fileRef = 482129A62236D44B0033D982 /* NSDateExtension.swift */; };
 		483977D5221F68D700A833FF /* TPHealthKitUploader.h in Headers */ = {isa = PBXBuildFile; fileRef = 483977C7221F68D700A833FF /* TPHealthKitUploader.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		4839781E221F6AB800A833FF /* SwiftyJSON.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48397805221F6AB800A833FF /* SwiftyJSON.swift */; };
 		4839781F221F6AB800A833FF /* TPUploader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48397806221F6AB800A833FF /* TPUploader.swift */; };
@@ -34,7 +36,7 @@
 		48397832221F6AB800A833FF /* HealthKitUploadManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4839781C221F6AB800A833FF /* HealthKitUploadManager.swift */; };
 		48397833221F6AB800A833FF /* HealthKitUploadReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4839781D221F6AB800A833FF /* HealthKitUploadReader.swift */; };
 		48EF2234221F768B00BD82A3 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48EF2233221F768B00BD82A3 /* AppDelegate.swift */; };
-		48EF2236221F768B00BD82A3 /* ViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48EF2235221F768B00BD82A3 /* ViewController.swift */; };
+		48EF2236221F768B00BD82A3 /* LogInViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48EF2235221F768B00BD82A3 /* LogInViewController.swift */; };
 		48EF2239221F768B00BD82A3 /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 48EF2237221F768B00BD82A3 /* Main.storyboard */; };
 		48EF223B221F768B00BD82A3 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 48EF223A221F768B00BD82A3 /* Assets.xcassets */; };
 		48EF223E221F768B00BD82A3 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 48EF223C221F768B00BD82A3 /* LaunchScreen.storyboard */; };
@@ -62,6 +64,8 @@
 		482128DD222F6A0D0033D982 /* NSDateExtension.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = NSDateExtension.swift; sourceTree = "<group>"; };
 		482128E0223073D90033D982 /* DebugLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebugLog.swift; sourceTree = "<group>"; };
 		482128E3223076E60033D982 /* TPUploaderStats.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TPUploaderStats.swift; sourceTree = "<group>"; };
+		482129A42236C34F0033D982 /* SyncViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncViewController.swift; sourceTree = "<group>"; };
+		482129A62236D44B0033D982 /* NSDateExtension.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NSDateExtension.swift; sourceTree = "<group>"; };
 		483977C4221F68D700A833FF /* TPHealthKitUploader.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = TPHealthKitUploader.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		483977C7221F68D700A833FF /* TPHealthKitUploader.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = TPHealthKitUploader.h; sourceTree = "<group>"; };
 		483977C8221F68D700A833FF /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
@@ -89,7 +93,7 @@
 		4839781D221F6AB800A833FF /* HealthKitUploadReader.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = HealthKitUploadReader.swift; sourceTree = "<group>"; };
 		48EF2231221F768B00BD82A3 /* Example.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Example.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		48EF2233221F768B00BD82A3 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
-		48EF2235221F768B00BD82A3 /* ViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewController.swift; sourceTree = "<group>"; };
+		48EF2235221F768B00BD82A3 /* LogInViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogInViewController.swift; sourceTree = "<group>"; };
 		48EF2238221F768B00BD82A3 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/Main.storyboard; sourceTree = "<group>"; };
 		48EF223A221F768B00BD82A3 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		48EF223D221F768B00BD82A3 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
@@ -231,9 +235,11 @@
 				48EF22502221EE7D00BD82A3 /* Example.entitlements */,
 				48EF2245221F784F00BD82A3 /* APIConnect.swift */,
 				48EF2243221F784F00BD82A3 /* Reachability.swift */,
+				482129A62236D44B0033D982 /* NSDateExtension.swift */,
 				48EF2244221F784F00BD82A3 /* TPUploaderAPI.swift */,
 				48EF2233221F768B00BD82A3 /* AppDelegate.swift */,
-				48EF2235221F768B00BD82A3 /* ViewController.swift */,
+				48EF2235221F768B00BD82A3 /* LogInViewController.swift */,
+				482129A42236C34F0033D982 /* SyncViewController.swift */,
 				48EF2237221F768B00BD82A3 /* Main.storyboard */,
 				48EF223A221F768B00BD82A3 /* Assets.xcassets */,
 				48EF223C221F768B00BD82A3 /* LaunchScreen.storyboard */,
@@ -467,9 +473,11 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				482129A52236C34F0033D982 /* SyncViewController.swift in Sources */,
 				48EF2248221F784F00BD82A3 /* APIConnect.swift in Sources */,
+				482129A72236D44B0033D982 /* NSDateExtension.swift in Sources */,
 				48EF2247221F784F00BD82A3 /* TPUploaderAPI.swift in Sources */,
-				48EF2236221F768B00BD82A3 /* ViewController.swift in Sources */,
+				48EF2236221F768B00BD82A3 /* LogInViewController.swift in Sources */,
 				48EF2234221F768B00BD82A3 /* AppDelegate.swift in Sources */,
 				48EF2246221F784F00BD82A3 /* Reachability.swift in Sources */,
 			);

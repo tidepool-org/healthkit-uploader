@@ -12,39 +12,50 @@ import Alamofire
 import SwiftyJSON
 import TPHealthKitUploader
 
-class ViewController: UIViewController {
+class SyncViewController: UIViewController {
 
-    @IBOutlet weak var loginViewContainer: UIControl!
-    @IBOutlet weak var inputContainerView: UIView!
-    
-    @IBOutlet weak var emailTextField: UITextField!
-    @IBOutlet weak var passwordTextField: UITextField!
-    @IBOutlet weak var loginButton: UIButton!
-    @IBOutlet weak var errorFeedbackLabel: UILabel!
-    @IBOutlet weak var serviceButton: UIButton!
-    @IBOutlet weak var loginIndicator: UIActivityIndicatorView!
     @IBOutlet weak var networkOfflineLabel: UILabel!
 
     // HK UI...
-    @IBOutlet weak var runViewContainer: UIView!
     @IBOutlet weak var hkEnableSwitch: UISwitch!
     @IBOutlet weak var logOutButton: UIButton!
     @IBOutlet weak var startHistoricalSyncButton: UIButton!
-        
+    
+    @IBOutlet weak var historicalStateValueLabel: UILabel!
+    @IBOutlet weak var historicalStateProgressLabel: UILabel!
+    @IBOutlet weak var currentStateValueLabel: UILabel!
+    @IBOutlet weak var currentStateLastUploadLabel: UILabel!
+    
     override func viewDidLoad() {
         super.viewDidLoad()
-        hkUploader = TPUploaderAPI.connector().uploader!
-        
-        // Do any additional setup after loading the view, typically from a nib.
-        self.configureAsLoggedIn(APIConnector.connector().sessionToken != nil)
-        updateButtonStates()
+        self.hkUploader = TPUploaderAPI.connector().uploader!
+        self.hkUploader.configure()
+        configureForReachability()
+
+        hkEnableSwitch.isOn = hkUploader.healthKitInterfaceEnabledForCurrentUser()
         let notificationCenter = NotificationCenter.default
-        notificationCenter.addObserver(self, selector: #selector(ViewController.textFieldDidChange), name: UITextField.textDidChangeNotification, object: nil)
-        NotificationCenter.default.addObserver(self, selector: #selector(ViewController.handleStatsUpdatedNotification(_:)), name: Notification.Name(rawValue: TPUploaderNotifications.Updated), object: nil)
-        NotificationCenter.default.addObserver(self, selector: #selector(ViewController.handleTurnOffUploaderNotification(_:)), name: Notification.Name(rawValue: TPUploaderNotifications.TurnOffUploader), object: nil)
-      self.serviceButton.setTitle(APIConnector.connector().currentService, for: .normal)
+        notificationCenter.addObserver(self, selector: #selector(SyncViewController.handleStatsUpdatedNotification(_:)), name: Notification.Name(rawValue: TPUploaderNotifications.Updated), object: nil)
+        notificationCenter.addObserver(self, selector: #selector(SyncViewController.handleTurnOffUploaderNotification(_:)), name: Notification.Name(rawValue: TPUploaderNotifications.TurnOffUploader), object: nil)
+        notificationCenter.addObserver(self, selector: #selector(SyncViewController.reachabilityChanged(_:)), name: ReachabilityChangedNotification, object: nil)
     }
     private var hkUploader: TPUploader!
+    
+    @objc func reachabilityChanged(_ note: Notification) {
+        DispatchQueue.main.async {
+            self.configureForReachability()
+        }
+    }
+    
+    func configureForReachability() {
+        let connected = APIConnector.connector().isConnectedToNetwork()
+        networkOfflineLabel.text = connected ? "Connected to Internet" : "No Internet Connection"
+    }
+
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        updateCurrentStats()
+        updateHistoricalStats()
+    }
     
     //
     // MARK: - HealthKit UI
@@ -76,10 +87,7 @@ class ViewController: UIViewController {
     }
     
     @IBAction func logout_button_tapped(_ sender: AnyObject) {
-        APIConnector.connector().logout()
-        hkUploader.configure()
-        updateButtonStates()
-        self.configureAsLoggedIn(false)
+        performSegue(withIdentifier: "segueToLogout", sender: self)
     }
     
     //
@@ -137,19 +145,39 @@ class ViewController: UIViewController {
 
     func updateCurrentStats() {
         DDLogInfo("Current stats update:")
+        let currentInProgess = hkUploader.isUploadInProgressForMode(TPUploader.Mode.Current)
+        currentStateValueLabel.text = currentInProgess ? "in progress" : "stopped"
+        currentStateLastUploadLabel.text = " "
+        
+        var hadSuccessfulUpload = false
+        var lastUploadTime = Date.distantPast
+        
         let currentStats = hkUploader.currentUploadStats()
         for stat in currentStats {
             if stat.hasSuccessfullyUploaded {
+                hadSuccessfulUpload = true
+                if stat.lastSuccessfulUploadTime.compare(lastUploadTime) == .orderedDescending {
+                    lastUploadTime = stat.lastSuccessfulUploadTime
+                }
                 DDLogInfo("Mode: \(stat.mode.rawValue)")
                 DDLogInfo("Type: \(stat.typeName)")
                 DDLogInfo("Last successful upload time: \(stat.lastSuccessfulUploadTime)")
                 DDLogInfo("")
             }
         }
+        
+        if hadSuccessfulUpload {
+            currentStateLastUploadLabel.text = lastUploadTime.timeAgoInWords(Date())
+        }
+        
     }
     
     func updateHistoricalStats() {
         DDLogInfo("Historical stats update:")
+        let historicInProgess = hkUploader.isUploadInProgressForMode(TPUploader.Mode.HistoricalAll)
+        historicalStateValueLabel.text = historicInProgess ? "in progress" : "stopped"
+        historicalStateProgressLabel.text = " "
+        
         let historicalStats = hkUploader.historicalUploadStats()
         for stat in historicalStats {
             if stat.hasSuccessfullyUploaded {
@@ -160,99 +188,6 @@ class ViewController: UIViewController {
                 DDLogInfo("")
             }
         }
-    }
-    //
-    // MARK: - Login
-    //
-    
-    @IBAction func tapOutsideFieldHandler(_ sender: AnyObject) {
-        passwordTextField.resignFirstResponder()
-        emailTextField.resignFirstResponder()
-    }
-    
-    @IBAction func passwordEnterHandler(_ sender: AnyObject) {
-        passwordTextField.resignFirstResponder()
-        if (loginButton.isEnabled) {
-            login_button_tapped(self)
-        }
-    }
-    
-    @IBAction func emailEnterHandler(_ sender: AnyObject) {
-        passwordTextField.becomeFirstResponder()
-    }
-    
-    @IBAction func login_button_tapped(_ sender: AnyObject) {
-        updateButtonStates()
-        tapOutsideFieldHandler(self)
-        loginIndicator.startAnimating()
-        
-        APIConnector.connector().login(emailTextField.text!, password: passwordTextField.text!) {
-            (result:Alamofire.Result<[String: Any?]>, statusCode: Int?) -> (Void) in
-            DDLogInfo("Login result: \(result)")
-            self.processLoginResult(result, statusCode: statusCode)
-        }
-    }
-    
-    fileprivate func processLoginResult(_ result: Alamofire.Result<[String: Any?]>, statusCode: Int?) {
-        self.loginIndicator.stopAnimating()
-        if (result.isSuccess) {
-            if let user=result.value {
-                DDLogInfo("Login success: \(user)")
-                self.hkUploader.configure()
-                self.configureAsLoggedIn(true)
-            } else {
-                // This should not happen- we should not succeed without a user!
-                DDLogError("Fatal error: No user returned!")
-            }
-        } else {
-            DDLogError("login failed! Error: " + result.error.debugDescription)
-            var errorText = "Check your Internet connection!"
-            if let statusCode = statusCode {
-                if statusCode == 401 {
-                    errorText = "Wrong email or password!"
-                }
-            }
-            self.errorFeedbackLabel.text = errorText
-            self.errorFeedbackLabel.isHidden = false
-            //self.passwordTextField.text = ""
-        }
-    }
-    
-    @objc func textFieldDidChange() {
-        updateButtonStates()
-    }
-    
-    private func configureAsLoggedIn(_ loggedIn: Bool) {
-        runViewContainer.isHidden = !loggedIn
-        loginViewContainer.isHidden = loggedIn
-        networkOfflineLabel.text = loggedIn ? "Online" : "Offline"
-        if loggedIn {
-            hkEnableSwitch.isOn = hkUploader.healthKitInterfaceEnabledForCurrentUser()
-        }
-    }
-    
-    private func updateButtonStates() {
-        errorFeedbackLabel.isHidden = true
-        // login button
-        if (emailTextField.text != "" && passwordTextField.text != "") {
-            loginButton.isEnabled = true
-            loginButton.setTitleColor(UIColor.black, for:UIControl.State())
-        } else {
-            loginButton.isEnabled = false
-            loginButton.setTitleColor(UIColor.lightGray, for:UIControl.State())
-        }
-    }
-    
-    @IBAction func selectServiceButtonHandler(_ sender: Any) {
-        let api = APIConnector.connector()
-        let actionSheet = UIAlertController(title: "Server" + " (" + api.currentService! + ")", message: "", preferredStyle: .actionSheet)
-        for serverName in api.kSortedServerNames {
-            actionSheet.addAction(UIAlertAction(title: serverName, style: .default, handler: { Void in
-                api.switchToServer(serverName)
-                self.serviceButton.setTitle(api.currentService, for: .normal)
-            }))
-        }
-        self.present(actionSheet, animated: true, completion: nil)
     }
 
 }
