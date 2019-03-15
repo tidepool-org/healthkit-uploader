@@ -121,4 +121,12 @@ public class TPUploader {
     public func isUploadInProgressForMode(_ mode: TPUploader.Mode) -> Bool {
         return HealthKitUploadManager.sharedInstance.isUploadInProgressForMode(mode)
     }
+    
+    public func startUploading(_ mode: TPUploader.Mode) {
+        if let currentId = config.currentUserId() {
+            HealthKitUploadManager.sharedInstance.startUploading(mode: mode, currentUserId: currentId)
+        } else {
+            DDLogVerbose("ERR: startUploading ignored, no current user!")
+        }
+    }
 }

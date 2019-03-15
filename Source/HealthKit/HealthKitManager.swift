@@ -88,8 +88,7 @@ class HealthKitManager {
                     if (shouldAuthorizeBloodGlucoseSampleWrites) {
                         UserDefaults.standard.set(true, forKey: HealthKitSettings.AuthorizationRequestedForBloodGlucoseSampleWritesKey)
                     }
-                    UserDefaults.standard.synchronize()
-                }
+                 }
                 
                 authorizationSuccess = success
                 authorizationError = error as NSError?

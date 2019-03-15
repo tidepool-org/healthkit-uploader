@@ -58,7 +58,6 @@ class HealthKitUploader: NSObject, URLSessionDelegate, URLSessionTaskDelegate, U
         let (batchSamplesDeleteBodyURL, deletePostBody) = try createBodyFileForBatchSamplesDelete(data: data)
         lastDeleteSamplePostBody = deletePostBody
         UserDefaults.standard.set(batchSamplesDeleteBodyURL, forKey: prefixedLocalId(self.deleteSamplesDataUrlKey))
-        UserDefaults.standard.synchronize()
         
         DispatchQueue.main.async {
             DDLogInfo("on main thread for type: \(self.typeString), mode: \(self.mode.rawValue)")
@@ -352,7 +351,6 @@ class HealthKitUploader: NSObject, URLSessionDelegate, URLSessionTaskDelegate, U
     
     fileprivate func setPendingUploadsState(uploadTaskIsPending: Bool) {
         UserDefaults.standard.set(uploadTaskIsPending, forKey: HealthKitSettings.prefixedKey(prefix: self.mode.rawValue, type: self.typeString, key: HealthKitSettings.HasPendingUploadsKey))
-        UserDefaults.standard.synchronize()
     }
 
     fileprivate var foregroundUploadSession: URLSession?

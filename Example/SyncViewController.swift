@@ -22,9 +22,19 @@ class SyncViewController: UIViewController {
     @IBOutlet weak var startHistoricalSyncButton: UIButton!
     
     @IBOutlet weak var historicalStateValueLabel: UILabel!
-    @IBOutlet weak var historicalStateProgressLabel: UILabel!
     @IBOutlet weak var currentStateValueLabel: UILabel!
     @IBOutlet weak var currentStateLastUploadLabel: UILabel!
+    @IBOutlet weak var currentStateLastTypeValue: UILabel!
+    
+    @IBOutlet weak var bloodGlucoseHistoricalValue: UILabel!
+    @IBOutlet weak var insulinHistoricalValue: UILabel!
+    @IBOutlet weak var carbsHistoricalValue: UILabel!
+    @IBOutlet weak var workoutsHistoricalLabel: UILabel!
+
+    @IBOutlet weak var bloodGlucoseTotalCnt: UILabel!
+    @IBOutlet weak var insulinTotalCnt: UILabel!
+    @IBOutlet weak var carbTotalCnt: UILabel!
+    @IBOutlet weak var workoutTotalCnt: UILabel!
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -37,9 +47,21 @@ class SyncViewController: UIViewController {
         notificationCenter.addObserver(self, selector: #selector(SyncViewController.handleStatsUpdatedNotification(_:)), name: Notification.Name(rawValue: TPUploaderNotifications.Updated), object: nil)
         notificationCenter.addObserver(self, selector: #selector(SyncViewController.handleTurnOffUploaderNotification(_:)), name: Notification.Name(rawValue: TPUploaderNotifications.TurnOffUploader), object: nil)
         notificationCenter.addObserver(self, selector: #selector(SyncViewController.reachabilityChanged(_:)), name: ReachabilityChangedNotification, object: nil)
+        
+        historicalProgressLabels["BloodGlucose"] = bloodGlucoseHistoricalValue
+        historicalProgressLabels["Insulin"] = insulinHistoricalValue
+        historicalProgressLabels["Workout"] = workoutsHistoricalLabel
+        historicalProgressLabels["Carb"] = carbsHistoricalValue
+
+        sampleTotalLabels["BloodGlucose"] = bloodGlucoseTotalCnt
+        sampleTotalLabels["Insulin"] = insulinTotalCnt
+        sampleTotalLabels["Workout"] = carbTotalCnt
+        sampleTotalLabels["Carb"] = workoutTotalCnt
     }
     private var hkUploader: TPUploader!
-    
+    private var historicalProgressLabels: [String: UILabel] = [:]
+    private var sampleTotalLabels: [String: UILabel] = [:]
+
     @objc func reachabilityChanged(_ note: Notification) {
         DispatchQueue.main.async {
             self.configureForReachability()
@@ -90,6 +112,11 @@ class SyncViewController: UIViewController {
         performSegue(withIdentifier: "segueToLogout", sender: self)
     }
     
+    @IBAction func startHistoricalSyncButtonHandler(_ sender: Any) {
+        // clear any historical progress we persisted...
+        hkUploader.startUploading(TPUploader.Mode.HistoricalAll)
+    }
+    
     //
     // MARK: - Status update
     //
@@ -97,7 +124,7 @@ class SyncViewController: UIViewController {
     @objc func handleTurnOffUploaderNotification(_ notification: Notification) {
         DispatchQueue.main.async {
             DispatchQueue.main.async {
-                //let mode = notification.object as! HealthKitUploadReader.Mode
+                
                 let userInfo = notification.userInfo!
                 let mode = userInfo["mode"] as! TPUploader.Mode
                 let type = userInfo["type"] as! String
@@ -130,7 +157,6 @@ class SyncViewController: UIViewController {
     
     @objc func handleStatsUpdatedNotification(_ notification: Notification) {
         DispatchQueue.main.async {
-            //let mode = notification.object as! HealthKitUploadReader.Mode
             let userInfo = notification.userInfo!
             let mode = userInfo["mode"] as! TPUploader.Mode
             let type = userInfo["type"] as! String
@@ -148,9 +174,11 @@ class SyncViewController: UIViewController {
         let currentInProgess = hkUploader.isUploadInProgressForMode(TPUploader.Mode.Current)
         currentStateValueLabel.text = currentInProgess ? "in progress" : "stopped"
         currentStateLastUploadLabel.text = " "
+        currentStateLastTypeValue.text = " "
         
         var hadSuccessfulUpload = false
         var lastUploadTime = Date.distantPast
+        var lastType = " "
         
         let currentStats = hkUploader.currentUploadStats()
         for stat in currentStats {
@@ -158,6 +186,7 @@ class SyncViewController: UIViewController {
                 hadSuccessfulUpload = true
                 if stat.lastSuccessfulUploadTime.compare(lastUploadTime) == .orderedDescending {
                     lastUploadTime = stat.lastSuccessfulUploadTime
+                    lastType = stat.typeName
                 }
                 DDLogInfo("Mode: \(stat.mode.rawValue)")
                 DDLogInfo("Type: \(stat.typeName)")
@@ -166,6 +195,7 @@ class SyncViewController: UIViewController {
             }
         }
         
+        currentStateLastTypeValue.text = lastType
         if hadSuccessfulUpload {
             currentStateLastUploadLabel.text = lastUploadTime.timeAgoInWords(Date())
         }
@@ -176,8 +206,7 @@ class SyncViewController: UIViewController {
         DDLogInfo("Historical stats update:")
         let historicInProgess = hkUploader.isUploadInProgressForMode(TPUploader.Mode.HistoricalAll)
         historicalStateValueLabel.text = historicInProgess ? "in progress" : "stopped"
-        historicalStateProgressLabel.text = " "
-        
+        self.startHistoricalSyncButton.isEnabled = !historicInProgess
         let historicalStats = hkUploader.historicalUploadStats()
         for stat in historicalStats {
             if stat.hasSuccessfullyUploaded {
@@ -186,6 +215,14 @@ class SyncViewController: UIViewController {
                 DDLogInfo("Current day: \(stat.currentDayHistorical)")
                 DDLogInfo("Total days: \(stat.totalDaysHistorical)")
                 DDLogInfo("")
+            }
+            
+            if let typeLabel = historicalProgressLabels[stat.typeName] {
+                typeLabel.text = "\(stat.currentDayHistorical) of \(stat.totalDaysHistorical)"
+            }
+            
+            if let totalLabel = sampleTotalLabels[stat.typeName] {
+                totalLabel.text = "\(stat.totalUploadCount)"
             }
         }
     }

@@ -57,13 +57,12 @@ class HealthKitUploadReader: NSObject {
     }
     
     func resetPersistentState() {
-        DDLogVerbose("type: \(uploadType.typeName), mode: \(mode.rawValue)")
+        DDLogVerbose("HealthKitUploadReader:\(#function) type: \(uploadType.typeName), mode: \(mode.rawValue)")
         
         UserDefaults.standard.removeObject(forKey: HealthKitSettings.prefixedKey(prefix: self.mode.rawValue, type: uploadType.typeName, key: HealthKitSettings.UploadQueryAnchorKey))
         UserDefaults.standard.removeObject(forKey: HealthKitSettings.prefixedKey(prefix: self.mode.rawValue, type: uploadType.typeName, key: HealthKitSettings.UploadQueryAnchorLastKey))
         UserDefaults.standard.removeObject(forKey: HealthKitSettings.prefixedKey(prefix: self.mode.rawValue, type: uploadType.typeName, key: HealthKitSettings.UploadQueryStartDateKey))
         UserDefaults.standard.removeObject(forKey: HealthKitSettings.prefixedKey(prefix: self.mode.rawValue, type: uploadType.typeName, key: HealthKitSettings.UploadQueryEndDateKey))
-        UserDefaults.standard.synchronize()
     }
 
     func startReading() {
@@ -123,7 +122,6 @@ class HealthKitUploadReader: NSObject {
             }
             UserDefaults.standard.set(endDate, forKey: HealthKitSettings.prefixedKey(prefix: self.mode.rawValue, type: uploadType.typeName, key: HealthKitSettings.UploadQueryEndDateKey))
             UserDefaults.standard.set(startDate, forKey: HealthKitSettings.prefixedKey(prefix: self.mode.rawValue, type: uploadType.typeName, key: HealthKitSettings.UploadQueryStartDateKey))
-            UserDefaults.standard.synchronize()
         }
         
         DDLogInfo("using query start: \(startDate!), end: \(endDate!)")
@@ -153,7 +151,6 @@ class HealthKitUploadReader: NSObject {
         if error == nil {
             let queryAnchorData = newAnchor != nil ? NSKeyedArchiver.archivedData(withRootObject: newAnchor!) : nil
             UserDefaults.standard.set(queryAnchorData, forKey: HealthKitSettings.prefixedKey(prefix: self.mode.rawValue, type: self.uploadType.typeName, key: HealthKitSettings.UploadQueryAnchorLastKey))
-            UserDefaults.standard.synchronize()
         }
         
         let healthKitUploadData = HealthKitUploadData(self.uploadType, newSamples: newSamples, deletedSamples: deletedSamples, currentUserId: currentUserId)

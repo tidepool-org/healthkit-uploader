@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		48202D52223C10D800DEC894 /* HealthKitUploadManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4839781C221F6AB800A833FF /* HealthKitUploadManager.swift */; };
 		482128DE222F6A0D0033D982 /* NSDateExtension.swift in Sources */ = {isa = PBXBuildFile; fileRef = 482128DD222F6A0D0033D982 /* NSDateExtension.swift */; };
 		482128E1223073D90033D982 /* DebugLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 482128E0223073D90033D982 /* DebugLog.swift */; };
 		482128E4223076E60033D982 /* TPUploaderStats.swift in Sources */ = {isa = PBXBuildFile; fileRef = 482128E3223076E60033D982 /* TPUploaderStats.swift */; };
@@ -33,7 +34,6 @@
 		4839782F221F6AB800A833FF /* HealthKitSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48397819221F6AB800A833FF /* HealthKitSettings.swift */; };
 		48397830221F6AB800A833FF /* HealthKitUploadStats.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4839781A221F6AB800A833FF /* HealthKitUploadStats.swift */; };
 		48397831221F6AB800A833FF /* HealthKitManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4839781B221F6AB800A833FF /* HealthKitManager.swift */; };
-		48397832221F6AB800A833FF /* HealthKitUploadManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4839781C221F6AB800A833FF /* HealthKitUploadManager.swift */; };
 		48397833221F6AB800A833FF /* HealthKitUploadReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4839781D221F6AB800A833FF /* HealthKitUploadReader.swift */; };
 		48EF2234221F768B00BD82A3 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48EF2233221F768B00BD82A3 /* AppDelegate.swift */; };
 		48EF2236221F768B00BD82A3 /* LogInViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48EF2235221F768B00BD82A3 /* LogInViewController.swift */; };
@@ -204,15 +204,15 @@
 		4839780E221F6AB800A833FF /* HealthKit */ = {
 			isa = PBXGroup;
 			children = (
-				4839780F221F6AB800A833FF /* Types */,
+				4839781B221F6AB800A833FF /* HealthKitManager.swift */,
 				48397816221F6AB800A833FF /* HealthKitConfiguration.swift */,
+				4839781C221F6AB800A833FF /* HealthKitUploadManager.swift */,
 				48397817221F6AB800A833FF /* HealthKitUploader.swift */,
 				48397818221F6AB800A833FF /* HealthKitUploadData.swift */,
 				48397819221F6AB800A833FF /* HealthKitSettings.swift */,
 				4839781A221F6AB800A833FF /* HealthKitUploadStats.swift */,
-				4839781B221F6AB800A833FF /* HealthKitManager.swift */,
-				4839781C221F6AB800A833FF /* HealthKitUploadManager.swift */,
 				4839781D221F6AB800A833FF /* HealthKitUploadReader.swift */,
+				4839780F221F6AB800A833FF /* Types */,
 			);
 			path = HealthKit;
 			sourceTree = "<group>";
@@ -464,8 +464,8 @@
 				4839781F221F6AB800A833FF /* TPUploader.swift in Sources */,
 				48397827221F6AB800A833FF /* HealthKitUploadTypeBloodGlucose.swift in Sources */,
 				48397831221F6AB800A833FF /* HealthKitManager.swift in Sources */,
-				48397832221F6AB800A833FF /* HealthKitUploadManager.swift in Sources */,
 				4839782F221F6AB800A833FF /* HealthKitSettings.swift in Sources */,
+				48202D52223C10D800DEC894 /* HealthKitUploadManager.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

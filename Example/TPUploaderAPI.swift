@@ -38,15 +38,6 @@ class TPUploaderAPI: TPUploaderConfigInfo {
     private var service: APIConnector
 
     //
-    // MARK: - TPUploader API
-    //
-    var enabledForCurrentUser: Bool {
-        get {
-            return false
-        }
-    }
-    
-    //
     // MARK: - TPUploaderConfigInfo protocol
     //
     
@@ -54,18 +45,21 @@ class TPUploaderAPI: TPUploaderConfigInfo {
     // Service API functions
     //
     func isConnectedToNetwork() -> Bool {
-        DDLogInfo("\(#function) - TPUploaderConfigInfo protocol")
-        return service.isConnectedToNetwork()
+        let result = service.isConnectedToNetwork()
+        DDLogInfo("\(#function) - TPUploaderConfigInfo protocol, returning: \(result)")
+        return result
     }
     
     func sessionToken() -> String? {
-        DDLogInfo("\(#function) - TPUploaderConfigInfo protocol")
-        return service.sessionToken
+        let result = service.sessionToken
+        DDLogInfo("\(#function) - TPUploaderConfigInfo protocol, returning: \(result ?? "nil")")
+        return result
     }
     
     func baseUrlString() -> String? {
-        DDLogInfo("\(#function) - TPUploaderConfigInfo protocol")
-        return service.baseUrlString
+        let result = service.baseUrlString
+        DDLogInfo("\(#function) - TPUploaderConfigInfo protocol, returning: \(result ?? "nil")")
+        return result
     }
 
     func trackMetric(_ metric: String) {
@@ -75,20 +69,23 @@ class TPUploaderAPI: TPUploaderConfigInfo {
     }
     
     func currentUserId() -> String? {
-        DDLogInfo("\(#function) - TPUploaderConfigInfo protocol")
-        return service.loggedInUserId
+        let result = service.loggedInUserId
+        DDLogInfo("\(#function) - TPUploaderConfigInfo protocol, returning: \(result ?? "nil")")
+        return result
     }
     
     var currentUserName: String? {
         get {
-            DDLogInfo("\(#function) - TPUploaderConfigInfo protocol")
-            return service.loggedInUserName
+            let result = service.loggedInUserName
+            DDLogInfo("\(#function) - TPUploaderConfigInfo protocol, returning: \(result ?? "nil")")
+            return result
         }
     }
 
     func isDSAUser() -> Bool {
-        DDLogInfo("\(#function) - TPUploaderConfigInfo protocol")
-        return true
+        let result = true
+        DDLogInfo("\(#function) - TPUploaderConfigInfo protocol, returning: \(result)")
+        return result
     }
     
     var bioSex: String? {

@@ -36,7 +36,6 @@ class APIConnector {
     
     // MARK: - Constants
     
-    fileprivate let kSessionTokenDefaultKey = "SToken"
     fileprivate let kCurrentServiceDefaultKey = "SCurrentService"
     fileprivate let kSessionTokenHeaderId = "X-Tidepool-Session-Token"
     fileprivate let kSessionTokenResponseId = "x-tidepool-session-token"
@@ -46,7 +45,7 @@ class APIConnector {
     fileprivate let kNoSessionTokenErrorCode = -1
     
     // Session token, acquired on login and saved in NSUserDefaults
-    // TODO: save in database?
+    fileprivate let kSessionTokenDefaultKey = "SToken"
     fileprivate var _sessionToken: String?
     var sessionToken: String? {
         set(newToken) {
@@ -55,7 +54,6 @@ class APIConnector {
             } else {
                 UserDefaults.standard.removeObject(forKey: kSessionTokenDefaultKey)
             }
-            UserDefaults.standard.synchronize()
             _sessionToken = newToken
         }
         get {
@@ -63,6 +61,38 @@ class APIConnector {
         }
     }
     
+    fileprivate let kLoggedInUserIDDefaultKey = "LoggedInUserId"
+    fileprivate var _loggedInUserId: String?
+    var loggedInUserId: String? {
+        set(newLoggedInUserId) {
+            if ( newLoggedInUserId != nil ) {
+                UserDefaults.standard.setValue(newLoggedInUserId, forKey:kLoggedInUserIDDefaultKey)
+            } else {
+                UserDefaults.standard.removeObject(forKey: kLoggedInUserIDDefaultKey)
+            }
+            _loggedInUserId = newLoggedInUserId
+        }
+        get {
+            return _loggedInUserId
+        }
+    }
+
+    fileprivate let kLoggedInUserNameDefaultKey = "LoggedInUserName"
+    fileprivate var _loggedInUserName: String?
+    var loggedInUserName: String? {
+        set(newLoggedInUserName) {
+            if ( newLoggedInUserName != nil ) {
+                UserDefaults.standard.setValue(newLoggedInUserName, forKey:kLoggedInUserNameDefaultKey)
+            } else {
+                UserDefaults.standard.removeObject(forKey: kLoggedInUserNameDefaultKey)
+            }
+            _loggedInUserName = newLoggedInUserName
+        }
+        get {
+            return _loggedInUserName
+        }
+    }
+
     // Dictionary of servers and their base URLs
     let kServers = [
         "Development" :  "https://dev-api.tidepool.org",
@@ -84,12 +114,10 @@ class APIConnector {
         set(newService) {
             if newService == nil {
                 UserDefaults.standard.removeObject(forKey: kCurrentServiceDefaultKey)
-                UserDefaults.standard.synchronize()
                 _currentService = nil
             } else {
                 if kServers[newService!] != nil {
                     UserDefaults.standard.setValue(newService, forKey: kCurrentServiceDefaultKey)
-                    UserDefaults.standard.synchronize()
                     _currentService = newService
                 }
             }
@@ -113,9 +141,6 @@ class APIConnector {
     // Base URL for API calls, set during initialization
     var baseUrl: URL?
     var baseUrlString: String?
-    // Returned from login, current logged in userId. Note that some calls may use id's for other profile users.
-    var loggedInUserId: String?
-    var loggedInUserName: String?
     
     // Reachability object, valid during lifetime of this APIConnector, and convenience function that uses this
     // Register for ReachabilityChangedNotification to monitor reachability changes             
@@ -144,6 +169,8 @@ class APIConnector {
         self.baseUrl = URL(string: baseUrlString!)!
         DDLogInfo("Using service: \(String(describing: self.baseUrl))")
         self.sessionToken = UserDefaults.standard.string(forKey: kSessionTokenDefaultKey)
+        self.loggedInUserId = UserDefaults.standard.string(forKey: kLoggedInUserIDDefaultKey)
+        self.loggedInUserName = UserDefaults.standard.string(forKey: kLoggedInUserNameDefaultKey)
         if let reachability = reachability {
             reachability.stopNotifier()
         }
