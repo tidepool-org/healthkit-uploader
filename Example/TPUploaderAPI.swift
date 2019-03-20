@@ -97,20 +97,21 @@ class TPUploaderAPI: TPUploaderConfigInfo {
         }
     }
     
+    let uploadFrameWork: StaticString = "uploader"
     func logVerbose(_ str: String) {
-        DDLogVerbose(str)
+        DDLogVerbose(str, file: uploadFrameWork, function: uploadFrameWork)
     }
     
     func logError(_ str: String) {
-        DDLogError(str)
+        DDLogError(str, file: uploadFrameWork, function: uploadFrameWork)
     }
     
     func logInfo(_ str: String) {
-        DDLogInfo(str)
+        DDLogInfo(str, file: uploadFrameWork, function: uploadFrameWork)
     }
     
     func logDebug(_ str: String) {
-        DDLogDebug(str)
+        DDLogDebug(str, file: uploadFrameWork, function: uploadFrameWork)
     }
 
 }

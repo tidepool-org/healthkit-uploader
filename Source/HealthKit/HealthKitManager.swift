@@ -220,7 +220,7 @@ class HealthKitManager {
 
     func readSamplesForType(_ uploadType: HealthKitUploadType, startDate: Date, endDate: Date, limit: Int, resultsHandler: @escaping (((NSError?, [HKSample]?, HKQueryAnchor?) -> Void)))
     {
-        DDLogInfo("readSamplesForType uploadType: \(uploadType.typeName) startDate: \(startDate), endDate: \(endDate), limit: \(limit)")
+        DDLogInfo("uploadType: \(uploadType.typeName) startDate: \(startDate), endDate: \(endDate), limit: \(limit)")
         
         guard isHealthDataAvailable else {
             DDLogError("Unexpected HealthKitManager call when health data not available")
@@ -239,33 +239,6 @@ class HealthKitManager {
             }
             
             resultsHandler(error as NSError?, newSamples, nil)
-        }
-        healthStore?.execute(sampleQuery)
-    }
-    
-    // Debug function, not currently called!
-    func countBloodGlucoseSamples(_ completion: @escaping (_ error: NSError?, _ totalSamplesCount: Int, _ totalDexcomSamplesCount: Int) -> (Void)) {
-        DDLogVerbose("\(#function)")
-        
-        let sampleType = HKObjectType.quantityType(forIdentifier: HKQuantityTypeIdentifier.bloodGlucose)!
-        let sampleQuery = HKSampleQuery(sampleType: sampleType, predicate: nil, limit: HKObjectQueryNoLimit, sortDescriptors: nil) {
-            (query, newSamples, error) -> Void in
-            
-            var totalSamplesCount = 0
-            var totalDexcomSamplesCount = 0
-            if newSamples != nil {
-                for sample in newSamples! {
-                    let sourceRevision = sample.sourceRevision
-                    let source = sourceRevision.source
-                    totalSamplesCount += 1
-                    let treatAllBloodGlucoseSourceTypesAsDexcom = UserDefaults.standard.bool(forKey: HealthKitSettings.TreatAllBloodGlucoseSourceTypesAsDexcomKey)
-                    if source.name.lowercased().range(of: "dexcom") != nil || !treatAllBloodGlucoseSourceTypesAsDexcom {
-                        totalDexcomSamplesCount += 1
-                    }
-                }
-            }
-            
-            completion(error as NSError?, totalSamplesCount, totalDexcomSamplesCount)
         }
         healthStore?.execute(sampleQuery)
     }

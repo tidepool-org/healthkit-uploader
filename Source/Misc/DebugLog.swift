@@ -9,7 +9,18 @@
 import Foundation
 
 /// Include these here to translate debug functions into protocol calls
-func DDLogVerbose(_ str: String) { TPUploader.sharedInstance?.config.logVerbose(str) }
-func DDLogInfo(_ str: String) { TPUploader.sharedInstance?.config.logInfo(str) }
-func DDLogDebug(_ str: String) { TPUploader.sharedInstance?.config.logDebug(str) }
-func DDLogError(_ str: String) { TPUploader.sharedInstance?.config.logError(str) }
+func DDLogInfo(_ message: @autoclosure () -> String,  file: StaticString = #file, function: StaticString = #function, line: UInt = #line) {
+    TPUploader.sharedInstance?.config.logInfo(String("HKUploader[\(function):\(line)] \(message())"))
+}
+
+func DDLogDebug(_ message: @autoclosure () -> String,  file: StaticString = #file, function: StaticString = #function, line: UInt = #line) {
+    TPUploader.sharedInstance?.config.logDebug(String("HKUploader[\(function):\(line)] \(message())"))
+}
+
+func DDLogError(_ message: @autoclosure () -> String,  file: StaticString = #file, function: StaticString = #function, line: UInt = #line) {
+    TPUploader.sharedInstance?.config.logError(String("HKUploader[\(function):\(line)] \(message())"))
+}
+
+func DDLogVerbose(_ message: @autoclosure () -> String,  file: StaticString = #file, function: StaticString = #function, line: UInt = #line) {
+    TPUploader.sharedInstance?.config.logVerbose(String("HKUploader[\(function):\(line)] \(message())"))
+}

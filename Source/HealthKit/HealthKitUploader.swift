@@ -60,7 +60,7 @@ class HealthKitUploader: NSObject, URLSessionDelegate, URLSessionTaskDelegate, U
         UserDefaults.standard.set(batchSamplesDeleteBodyURL, forKey: prefixedLocalId(self.deleteSamplesDataUrlKey))
         
         DispatchQueue.main.async {
-            DDLogInfo("on main thread for type: \(self.typeString), mode: \(self.mode.rawValue)")
+            DDLogInfo("(\(self.typeString), mode: \(self.mode.rawValue)) [main]")
             
             // Choose the right session to start tasks with
             var uploadSession: URLSession?
@@ -87,7 +87,7 @@ class HealthKitUploader: NSObject, URLSessionDelegate, URLSessionTaskDelegate, U
                     self.setPendingUploadsState(uploadTaskIsPending: true)
                     let uploadTask = uploadSession!.uploadTask(with: request, fromFile: batchSamplesPostBodyURL!)
                     uploadTask.taskDescription = self.prefixedLocalId(self.uploadSamplesTaskDescription)
-                    DDLogInfo("Created samples upload task for type: \(self.typeString), mode: \(self.mode.rawValue): \(uploadTask.taskIdentifier)")
+                    DDLogInfo("(\(self.typeString), \(self.mode.rawValue)) Created samples upload task: \(uploadTask.taskIdentifier)")
                     uploadTask.resume()
                     return
                 } catch {
@@ -121,7 +121,7 @@ class HealthKitUploader: NSObject, URLSessionDelegate, URLSessionTaskDelegate, U
                 self.setPendingUploadsState(uploadTaskIsPending: true)
                 let deleteTask = session.uploadTask(with: deleteSamplesRequest, fromFile: deleteSamplesPostBodyURL)
                 deleteTask.taskDescription = self.prefixedLocalId(self.deleteSamplesTaskDescription)
-                DDLogInfo("Created samples delete task for type: \(self.typeString), mode: \(self.mode.rawValue): \(deleteTask.taskIdentifier)")
+                DDLogInfo("(type: \(self.typeString), \(self.mode.rawValue)) Created samples delete task: \(deleteTask.taskIdentifier)")
                 deleteTask.resume()
                 return true
            } catch {
@@ -146,7 +146,7 @@ class HealthKitUploader: NSObject, URLSessionDelegate, URLSessionTaskDelegate, U
             }
             for uploadSession in uploadSessions {
                 uploadSession.getTasksWithCompletionHandler { (dataTasks, uploadTasks, downloadTasks) -> Void in
-                    DDLogInfo("Canceling \(uploadTasks.count) tasks for type: \(self.typeString), mode: \(self.mode.rawValue)")
+                    DDLogInfo("(\(self.typeString), \(self.mode.rawValue)) Canceling \(uploadTasks.count) tasks")
                     if uploadTasks.count > 0 {
                         for uploadTask in uploadTasks {
                             DDLogInfo("Canceling task: \(uploadTask.taskIdentifier)")

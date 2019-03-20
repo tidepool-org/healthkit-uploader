@@ -136,7 +136,7 @@ class HealthKitUploadReader: NSObject {
     
     // NOTE: This is a HealthKit results handler, not called on main thread
     fileprivate func samplesReadResultsHandler(_ error: NSError?, newSamples: [HKSample]?, deletedSamples: [HKDeletedObject]?, newAnchor: HKQueryAnchor?) {
-        DDLogVerbose("type: \(uploadType.typeName), mode: \(mode.rawValue)")
+        DDLogVerbose("(\(uploadType.typeName), mode: \(mode.rawValue))")
         
         guard self.isReading else {
             DDLogInfo("Not currently reading, ignoring")

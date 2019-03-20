@@ -24,12 +24,8 @@ class HealthKitSettings {
     static let AuthorizationRequestedForUploaderSamplesKey = "authorizationRequestedForUploaderSamples"
     static let AuthorizationRequestedForBloodGlucoseSampleWritesKey = "authorizationRequestedForBloodGlucoseSampleWrites"
     
-    // Workout anchor query
-    static let WorkoutQueryAnchorKey = "WorkoutQueryAnchorKey"
-
     // Other
     static let LastExecutedUploaderVersionKey = "LastExecutedUploaderVersionKey"
-    static let TreatAllBloodGlucoseSourceTypesAsDexcomKey = "TreatAllBloodGlucoseSourceTypesAsDexcomKey"
     static let HasPresentedSyncUI = "HasPresentedSyncUI"
 
     // Uploads (prefix using prefixedKey helper)

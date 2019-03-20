@@ -154,7 +154,7 @@ private class HealthKitUploadHelper: HealthKitSampleUploaderDelegate, HealthKitU
     private(set) var uploadType: HealthKitUploadType
     init(_ type: HealthKitUploadType) {
         self.uploadType = type
-        DDLogVerbose("helper type: \(uploadType.typeName)")
+        DDLogVerbose("(\(uploadType.typeName))")
         // init reader, uploader, stats for the different modes
         self.initForMode(TPUploader.Mode.Current)
         self.initForMode(TPUploader.Mode.HistoricalAll)
@@ -182,12 +182,12 @@ private class HealthKitUploadHelper: HealthKitSampleUploaderDelegate, HealthKitU
     
     func markNotResumable(mode: TPUploader.Mode) {
         // Clear out the upload reader...
-        DDLogVerbose("UploadHelper:markNotResumable: helper type: \(uploadType.typeName), mode: \(mode.rawValue)")
+        DDLogVerbose("(\(uploadType.typeName), mode: \(mode.rawValue))")
         self.readers[mode]!.resetPersistentState()
     }
     
     func startUploading(mode: TPUploader.Mode, currentUserId: String) {
-        DDLogVerbose("helper type: \(uploadType.typeName), mode: \(mode.rawValue)")
+        DDLogVerbose("(\(uploadType.typeName), mode: \(mode.rawValue))")
         
         guard !self.isUploading[mode]! else {
             DDLogInfo("Already uploading, ignoring. Mode: \(mode)")
@@ -234,8 +234,8 @@ private class HealthKitUploadHelper: HealthKitSampleUploaderDelegate, HealthKitU
     }
     
     func stopUploading(mode: TPUploader.Mode, reason: TPUploader.StoppedReason) {
-        DDLogVerbose("helper type: \(uploadType.typeName), mode: \(mode.rawValue)")
-        
+        DDLogVerbose("(\(uploadType.typeName), mode: \(mode.rawValue))")
+
         guard self.isUploading[mode]! else {
             DDLogInfo("Not currently uploading, ignoring. Mode: \(mode)")
             return
@@ -274,7 +274,7 @@ private class HealthKitUploadHelper: HealthKitSampleUploaderDelegate, HealthKitU
     }
     
     func stopUploading(reason: TPUploader.StoppedReason) {
-        DDLogVerbose("helper type: \(uploadType.typeName)")
+        DDLogVerbose("(\(uploadType.typeName))")
         var mode = TPUploader.Mode.Current
         if (self.isUploading[mode]!) {
             self.stopUploading(mode: mode, reason: reason)
@@ -286,7 +286,7 @@ private class HealthKitUploadHelper: HealthKitSampleUploaderDelegate, HealthKitU
     }
     
     func resumeUploadingIfResumable(currentUserId: String?) {
-        DDLogVerbose("helper type: \(uploadType.typeName)")
+        DDLogVerbose("(\(uploadType.typeName))")
         
         var mode = TPUploader.Mode.Current
         self.resumeUploadingIfResumable(mode: mode, currentUserId: currentUserId)
@@ -299,7 +299,7 @@ private class HealthKitUploadHelper: HealthKitSampleUploaderDelegate, HealthKitU
     }
     
     func resumeUploadingIfResumable(mode: TPUploader.Mode, currentUserId: String?) {
-        DDLogVerbose("helper type: \(uploadType.typeName), mode: \(mode.rawValue)")
+        DDLogVerbose("(\(uploadType.typeName), \(mode.rawValue))")
         
         if (currentUserId != nil && !self.isUploading[mode]! && self.isResumable(mode: mode)) {
             if mode == TPUploader.Mode.Current {
@@ -317,7 +317,7 @@ private class HealthKitUploadHelper: HealthKitSampleUploaderDelegate, HealthKitU
     
     // NOTE: This is a query observer handler called from HealthKit, not on main thread
     private func uploadObservationHandler(_ error: NSError?) {
-        DDLogVerbose("helper type: \(uploadType.typeName)")
+        DDLogVerbose("(\(uploadType.typeName))")
         
         DispatchQueue.main.async {
             DDLogInfo("uploadObservationHandler on main thread")
@@ -359,7 +359,7 @@ private class HealthKitUploadHelper: HealthKitSampleUploaderDelegate, HealthKitU
     
     // NOTE: This is usually called on a background queue, not on main thread
     func sampleUploader(uploader: HealthKitUploader, didCompleteUploadWithError error: Error?) {
-        DDLogVerbose("helper type: \(uploadType.typeName), mode: \(uploader.mode.rawValue), type: \(uploader.typeString)")
+        DDLogVerbose("(\(uploadType.typeName), \(uploader.mode.rawValue))")
         
         DispatchQueue.main.async {
             DDLogInfo("didCompleteUploadWithError on main thread")
@@ -422,10 +422,10 @@ private class HealthKitUploadHelper: HealthKitSampleUploaderDelegate, HealthKitU
     
     // NOTE: This is usually called on a background queue, not on main thread
     func uploadReader(reader: HealthKitUploadReader, didStopReading reason: TPUploader.StoppedReason) {
-        DDLogVerbose("helper type: \(uploadType.typeName), mode: \(reader.mode.rawValue)")
+        DDLogVerbose("(\(uploadType.typeName), \(reader.mode.rawValue))")
         
         DispatchQueue.main.async {
-            DDLogInfo("didStopReading on main thread")
+            DDLogVerbose("(\(self.uploadType.typeName), \(reader.mode.rawValue)) [main thread]")
             
             // End background task for Current mode, if in background
             if reader.mode == TPUploader.Mode.Current && UIApplication.shared.applicationState == UIApplication.State.background {
@@ -446,10 +446,10 @@ private class HealthKitUploadHelper: HealthKitSampleUploaderDelegate, HealthKitU
     // NOTE: This is a query results handler called from HealthKit, not on main thread
     func uploadReader(reader: HealthKitUploadReader, didReadDataForUpload uploadData: HealthKitUploadData, error: Error?)
     {
-        DDLogVerbose("helper type: \(uploadType.typeName), mode: \(reader.mode.rawValue), type: \(reader.uploadType.typeName)")
+        DDLogVerbose("(\(uploadType.typeName), \(reader.mode.rawValue))")
         
         DispatchQueue.main.async {
-            DDLogInfo("didReadDataForUpload on main thread")
+            DDLogVerbose("(\(self.uploadType.typeName), \(reader.mode.rawValue)) [main thread]")
             
             if let error = error {
                 DDLogError("Stop reading most recent samples. Mode: \(reader.mode). Error: \(String(describing: error))")
@@ -516,7 +516,7 @@ private class HealthKitUploadHelper: HealthKitSampleUploaderDelegate, HealthKitU
     //
     
     fileprivate func handleNewResults(reader: HealthKitUploadReader, uploadData: HealthKitUploadData) {
-        DDLogVerbose("helper type: \(uploadType.typeName), mode: \(reader.mode.rawValue), type: \(reader.uploadType.typeName)")
+        DDLogVerbose("(\(uploadType.typeName), \(reader.mode.rawValue))")
         
         do {
             let message = "Start next upload for \(uploadData.filteredSamples.count) samples, and \(uploadData.deletedSamples.count) deleted samples. Mode: \(reader.mode), type: \(self.uploadType.typeName)"
@@ -532,13 +532,13 @@ private class HealthKitUploadHelper: HealthKitSampleUploaderDelegate, HealthKitU
     }
     
     fileprivate func handleNoResults(reader: HealthKitUploadReader) {
-        DDLogVerbose("HKUploadManager handleNoResults: helper type: \(uploadType.typeName), mode: \(reader.mode.rawValue), type: \(reader.uploadType.typeName)")
+        DDLogVerbose("(\(uploadType.typeName), \(reader.mode.rawValue))")
         
         reader.stopReading(reason: TPUploader.StoppedReason.noResultsFromQuery)
     }
     
     fileprivate func promoteLastAnchor(reader: HealthKitUploadReader) {
-        DDLogVerbose("helper type: \(uploadType.typeName), mode: \(reader.mode.rawValue), type: \(reader.uploadType.typeName)")
+        DDLogVerbose("(\(uploadType.typeName), \(reader.mode.rawValue))")
         
         let newAnchor = UserDefaults.standard.object(forKey: HealthKitSettings.prefixedKey(prefix: reader.mode.rawValue, type: uploadType.typeName, key: HealthKitSettings.UploadQueryAnchorLastKey))
         if newAnchor != nil {

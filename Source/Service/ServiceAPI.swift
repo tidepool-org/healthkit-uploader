@@ -437,7 +437,7 @@ public class TPUploaderServiceAPI {
     }
     
     public func makeDataUploadRequest(_ httpMethod: String) throws -> URLRequest {
-        config.logVerbose("\(#function)")
+        DDLogVerbose("\(#function)")
         
         var error: NSError?
         
