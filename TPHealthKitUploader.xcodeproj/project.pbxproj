@@ -220,10 +220,10 @@
 		4839780F221F6AB800A833FF /* Types */ = {
 			isa = PBXGroup;
 			children = (
+				48397813221F6AB800A833FF /* HealthKitUploadType.swift */,
 				48397810221F6AB800A833FF /* HealthKitUploadTypeCarb.swift */,
 				48397811221F6AB800A833FF /* HealthKitUploadTypeBloodGlucose.swift */,
 				48397812221F6AB800A833FF /* HealthKitUploadTypeInsulin.swift */,
-				48397813221F6AB800A833FF /* HealthKitUploadType.swift */,
 				48397814221F6AB800A833FF /* HealthKitUploadTypeWorkout.swift */,
 			);
 			path = Types;
@@ -308,6 +308,7 @@
 				48EF222D221F768B00BD82A3 /* Sources */,
 				48EF222E221F768B00BD82A3 /* Frameworks */,
 				48EF222F221F768B00BD82A3 /* Resources */,
+				48AD39762242A98F008C8F9C /* ShellScript */,
 				DA36291F48EFCAF8C32BA836 /* [CP] Embed Pods Frameworks */,
 			);
 			buildRules = (
@@ -384,6 +385,23 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXShellScriptBuildPhase section */
+		48AD39762242A98F008C8F9C /* ShellScript */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "COMMITS=$(git rev-list HEAD | wc -l)\nCOMMITS=$(($COMMITS))\ndefaults write \"${BUILT_PRODUCTS_DIR}/${INFOPLIST_PATH%.*}\" \"CFBundleVersion\" \"${COMMITS}\"\n";
+		};
 		AC650A0852179F0D5F1F4A4E /* [CP] Check Pods Manifest.lock */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;

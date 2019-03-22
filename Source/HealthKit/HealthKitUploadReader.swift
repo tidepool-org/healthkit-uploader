@@ -30,39 +30,42 @@ class HealthKitUploadReader: NSObject {
         
         self.uploadType = type
         self.mode = mode
-
+        self.uploaderSettings = UploaderSettings(mode: mode, type: type)
         super.init()
     }
     
     weak var delegate: HealthKitUploadReaderDelegate?
-
-    fileprivate(set) var uploadType: HealthKitUploadType
-    fileprivate(set) var mode: TPUploader.Mode
-    fileprivate(set) var isReading = false
+    let uploaderSettings: UploaderSettings
+    
+    private(set) var uploadType: HealthKitUploadType
+    private(set) var mode: TPUploader.Mode
+    private(set) var isReading = false
     var currentUserId: String?
 
     func isResumable() -> Bool {
         var isResumable = false
-
         if self.mode == TPUploader.Mode.Current {
             isResumable = true
         } else {
-            if let _ = UserDefaults.standard.object(forKey: HealthKitSettings.prefixedKey(prefix: self.mode.rawValue, type: uploadType.typeName, key: HealthKitSettings.UploadQueryStartDateKey)),
-               let _ = UserDefaults.standard.object(forKey: HealthKitSettings.prefixedKey(prefix: self.mode.rawValue, type: uploadType.typeName, key: HealthKitSettings.UploadQueryEndDateKey)) {
+            if let _ = uploaderSettings.objectForKey(.queryStartDateKey), let _ = uploaderSettings.objectForKey(.queryEndDateKey) {
                 isResumable = true
             }
         }
-
         return isResumable
+    }
+    
+    func isFreshHistoricalUpload() -> Bool {
+        if mode == TPUploader.Mode.HistoricalAll {
+            if uploaderSettings.objectForKey(.queryStartDateKey) == nil {
+                return true
+            }
+        }
+        return false
     }
     
     func resetPersistentState() {
         DDLogVerbose("HealthKitUploadReader:\(#function) type: \(uploadType.typeName), mode: \(mode.rawValue)")
-        
-        UserDefaults.standard.removeObject(forKey: HealthKitSettings.prefixedKey(prefix: self.mode.rawValue, type: uploadType.typeName, key: HealthKitSettings.UploadQueryAnchorKey))
-        UserDefaults.standard.removeObject(forKey: HealthKitSettings.prefixedKey(prefix: self.mode.rawValue, type: uploadType.typeName, key: HealthKitSettings.UploadQueryAnchorLastKey))
-        UserDefaults.standard.removeObject(forKey: HealthKitSettings.prefixedKey(prefix: self.mode.rawValue, type: uploadType.typeName, key: HealthKitSettings.UploadQueryStartDateKey))
-        UserDefaults.standard.removeObject(forKey: HealthKitSettings.prefixedKey(prefix: self.mode.rawValue, type: uploadType.typeName, key: HealthKitSettings.UploadQueryEndDateKey))
+        uploaderSettings.resetAllKeys()
     }
 
     func startReading() {
@@ -78,6 +81,15 @@ class HealthKitUploadReader: NSObject {
         self.delegate?.uploadReaderDidStartReading(reader: self)
 
         self.readMore()
+    }
+    
+    func promoteLastAnchor() {
+        DDLogVerbose("type: \(uploadType.typeName), mode: \(mode.rawValue)")
+        let newAnchor = uploaderSettings.anchorForKey(.queryAnchorLastKey)
+        if newAnchor != nil {
+            uploaderSettings.updateAnchorForKey(.queryAnchorKey, anchor: newAnchor)
+            uploaderSettings.removeSettingForKey(.queryAnchorLastKey)
+        }
     }
     
     func stopReading(reason: TPUploader.StoppedReason) {
@@ -97,19 +109,11 @@ class HealthKitUploadReader: NSObject {
         DDLogInfo("type: \(uploadType.typeName), mode: \(mode.rawValue)")
 
         // Load the anchor
-        var anchor: HKQueryAnchor?
-        let anchorData = UserDefaults.standard.object(forKey: HealthKitSettings.prefixedKey(prefix: self.mode.rawValue, type: uploadType.typeName, key: HealthKitSettings.UploadQueryAnchorKey))
-        if let anchorData = anchorData {
-            do {
-                anchor = try NSKeyedUnarchiver.unarchivedObject(ofClasses: [HKQueryAnchor.self], from: anchorData as! Data) as? HKQueryAnchor
-            } catch {
-                
-            }
-        }
+        let anchor = uploaderSettings.anchorForKey(.queryAnchorKey)
 
         // Get the start and end dates for the predicate
-        var startDate = UserDefaults.standard.object(forKey: HealthKitSettings.prefixedKey(prefix: self.mode.rawValue, type: uploadType.typeName, key: HealthKitSettings.UploadQueryStartDateKey)) as? Date
-        var endDate = UserDefaults.standard.object(forKey: HealthKitSettings.prefixedKey(prefix: self.mode.rawValue, type: uploadType.typeName, key: HealthKitSettings.UploadQueryEndDateKey)) as? Date
+        var startDate = uploaderSettings.dateForKeyIfExists(.queryStartDateKey)
+        var endDate = uploaderSettings.dateForKeyIfExists(.queryEndDateKey)
         if (startDate == nil || endDate == nil) {
             DDLogInfo("startDate nil: \(startDate == nil), endDate nil: \(endDate == nil)")
             if (self.mode == TPUploader.Mode.Current) {
@@ -120,8 +124,8 @@ class HealthKitUploadReader: NSObject {
                 endDate = Date().addingTimeInterval(-60 * 60 * 4)
                 startDate = Date.distantPast
             }
-            UserDefaults.standard.set(endDate, forKey: HealthKitSettings.prefixedKey(prefix: self.mode.rawValue, type: uploadType.typeName, key: HealthKitSettings.UploadQueryEndDateKey))
-            UserDefaults.standard.set(startDate, forKey: HealthKitSettings.prefixedKey(prefix: self.mode.rawValue, type: uploadType.typeName, key: HealthKitSettings.UploadQueryStartDateKey))
+            uploaderSettings.updateDateSettingForKey(.queryEndDateKey, value: endDate!)
+            uploaderSettings.updateDateSettingForKey(.queryStartDateKey, value: startDate!)
         }
         
         DDLogInfo("using query start: \(startDate!), end: \(endDate!)")
@@ -135,7 +139,7 @@ class HealthKitUploadReader: NSObject {
     // MARK: Private
     
     // NOTE: This is a HealthKit results handler, not called on main thread
-    fileprivate func samplesReadResultsHandler(_ error: NSError?, newSamples: [HKSample]?, deletedSamples: [HKDeletedObject]?, newAnchor: HKQueryAnchor?) {
+    private func samplesReadResultsHandler(_ error: NSError?, newSamples: [HKSample]?, deletedSamples: [HKDeletedObject]?, newAnchor: HKQueryAnchor?) {
         DDLogVerbose("(\(uploadType.typeName), mode: \(mode.rawValue))")
         
         guard self.isReading else {
@@ -149,8 +153,7 @@ class HealthKitUploadReader: NSObject {
         }
         
         if error == nil {
-            let queryAnchorData = newAnchor != nil ? NSKeyedArchiver.archivedData(withRootObject: newAnchor!) : nil
-            UserDefaults.standard.set(queryAnchorData, forKey: HealthKitSettings.prefixedKey(prefix: self.mode.rawValue, type: self.uploadType.typeName, key: HealthKitSettings.UploadQueryAnchorLastKey))
+            uploaderSettings.updateAnchorForKey(.queryAnchorLastKey, anchor: newAnchor)
         }
         
         let healthKitUploadData = HealthKitUploadData(self.uploadType, newSamples: newSamples, deletedSamples: deletedSamples, currentUserId: currentUserId)

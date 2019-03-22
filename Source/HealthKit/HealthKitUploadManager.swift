@@ -21,13 +21,14 @@ class HealthKitUploadManager:
         URLSessionTaskDelegate
 {
     static let sharedInstance = HealthKitUploadManager()
+    let settings = GlobalSettings.sharedInstance
     
     var hasPresentedSyncUI: Bool {
         get {
-            return UserDefaults.standard.bool(forKey: HealthKitSettings.HasPresentedSyncUI)
+            return settings.boolForKey(.hasPresentedSyncUI)
         }
         set {
-            UserDefaults.standard.set(newValue, forKey: HealthKitSettings.HasPresentedSyncUI);
+            settings.updateBoolForKey(.hasPresentedSyncUI, value: newValue)
         }
     }
     
@@ -38,11 +39,11 @@ class HealthKitUploadManager:
         self.configure()
         // Reset persistent uploader state if uploader version is upgraded
         let latestUploaderVersion = 8
-        let lastExecutedUploaderVersion = UserDefaults.standard.integer(forKey: HealthKitSettings.LastExecutedUploaderVersionKey)
+        let lastExecutedUploaderVersion = settings.intForKey(.lastExecutedUploaderVersionKey)
         var resetPersistentData = false
         if latestUploaderVersion != lastExecutedUploaderVersion {
             DDLogInfo("Migrating uploader to \(latestUploaderVersion)")
-            UserDefaults.standard.set(latestUploaderVersion, forKey: HealthKitSettings.LastExecutedUploaderVersionKey)
+            settings.updateIntForKey(.lastExecutedUploaderVersionKey, value: latestUploaderVersion)
             resetPersistentData = true
         }
         if resetPersistentData {
@@ -95,7 +96,7 @@ class HealthKitUploadManager:
         }
         
         if switchingHealthKitUsers {
-            UserDefaults.standard.removeObject(forKey: HealthKitSettings.HasPresentedSyncUI)
+            settings.removeSettingForKey(.hasPresentedSyncUI)
         }
     }
     
@@ -209,10 +210,7 @@ private class HealthKitUploadHelper: HealthKitSampleUploaderDelegate, HealthKitU
             HealthKitManager.sharedInstance.startObservingSamplesForType(uploadType, self.uploadObservationHandler)
         }
         
-        var isFreshHistoricalUpload = false
-        if mode == TPUploader.Mode.HistoricalAll {
-            isFreshHistoricalUpload = UserDefaults.standard.object(forKey: HealthKitSettings.prefixedKey(prefix: mode.rawValue, type: uploadType.typeName, key: HealthKitSettings.UploadQueryStartDateKey)) == nil
-        }
+        let isFreshHistoricalUpload = self.readers[mode]!.isFreshHistoricalUpload()
         
         DDLogInfo("Start reading samples after starting upload. Mode: \(mode)")
         self.readers[mode]!.startReading()
@@ -228,10 +226,15 @@ private class HealthKitUploadHelper: HealthKitSampleUploaderDelegate, HealthKitU
             "type" : self.uploadType.typeName,
             "mode" : mode
         ]
-        
-        NotificationCenter.default.post(Notification(name: Notification.Name(rawValue: TPUploaderNotifications.Updated), object: mode, userInfo: uploadInfo))
-        NotificationCenter.default.post(Notification(name: Notification.Name(rawValue: TPUploaderNotifications.TurnOnUploader), object: mode, userInfo: uploadInfo))
+        postNotifications([TPUploaderNotifications.Updated, TPUploaderNotifications.TurnOnUploader], mode: mode, uploadInfo: uploadInfo)
     }
+    
+    private func postNotifications(_ notificationNames: [String], mode: TPUploader.Mode, uploadInfo: Dictionary<String, Any>) {
+        for name in notificationNames {
+            NotificationCenter.default.post(Notification(name: Notification.Name(rawValue: name), object: mode, userInfo: uploadInfo))
+        }
+    }
+
     
     func stopUploading(mode: TPUploader.Mode, reason: TPUploader.StoppedReason) {
         DDLogVerbose("(\(uploadType.typeName), mode: \(mode.rawValue))")
@@ -268,9 +271,7 @@ private class HealthKitUploadHelper: HealthKitSampleUploaderDelegate, HealthKitU
             "mode" : mode,
             "reason": reason
         ]
-        
-        NotificationCenter.default.post(Notification(name: Notification.Name(rawValue: TPUploaderNotifications.Updated), object: mode, userInfo: uploadInfo))
-        NotificationCenter.default.post(Notification(name: Notification.Name(rawValue: TPUploaderNotifications.TurnOffUploader), object: mode, userInfo: uploadInfo))
+        postNotifications([TPUploaderNotifications.Updated, TPUploaderNotifications.TurnOffUploader], mode: mode, uploadInfo: uploadInfo)
     }
     
     func stopUploading(reason: TPUploader.StoppedReason) {
@@ -380,7 +381,7 @@ private class HealthKitUploadHelper: HealthKitSampleUploaderDelegate, HealthKitU
             } else {
                 DDLogInfo("Upload session succeeded! Mode: \(uploader.mode)")
                 self.stats[uploader.mode]!.updateForSuccessfulUpload(lastSuccessfulUploadTime: Date())
-                self.promoteLastAnchor(reader: self.readers[uploader.mode]!)
+                self.readers[uploader.mode]!.promoteLastAnchor()
                 completed = true
             }
             
@@ -463,7 +464,7 @@ private class HealthKitUploadHelper: HealthKitSampleUploaderDelegate, HealthKitU
                 if uploadData.filteredSamples.count > 0 || uploadData.deletedSamples.count > 0 {
                     self.handleNewResults(reader: reader, uploadData: uploadData)
                 } else if uploadData.newOrDeletedSamplesWereDelivered {
-                    self.promoteLastAnchor(reader: self.readers[reader.mode]!)
+                    self.readers[reader.mode]!.promoteLastAnchor()
                     if self.isUploading[reader.mode]! {
                         self.readers[reader.mode]!.readMore()
                     } else {
@@ -515,7 +516,7 @@ private class HealthKitUploadHelper: HealthKitSampleUploaderDelegate, HealthKitU
     // MARK: - Private methods
     //
     
-    fileprivate func handleNewResults(reader: HealthKitUploadReader, uploadData: HealthKitUploadData) {
+    private func handleNewResults(reader: HealthKitUploadReader, uploadData: HealthKitUploadData) {
         DDLogVerbose("(\(uploadType.typeName), \(reader.mode.rawValue))")
         
         do {
@@ -531,20 +532,11 @@ private class HealthKitUploadHelper: HealthKitSampleUploaderDelegate, HealthKitU
         }
     }
     
-    fileprivate func handleNoResults(reader: HealthKitUploadReader) {
+    private func handleNoResults(reader: HealthKitUploadReader) {
         DDLogVerbose("(\(uploadType.typeName), \(reader.mode.rawValue))")
         
         reader.stopReading(reason: TPUploader.StoppedReason.noResultsFromQuery)
     }
     
-    fileprivate func promoteLastAnchor(reader: HealthKitUploadReader) {
-        DDLogVerbose("(\(uploadType.typeName), \(reader.mode.rawValue))")
-        
-        let newAnchor = UserDefaults.standard.object(forKey: HealthKitSettings.prefixedKey(prefix: reader.mode.rawValue, type: uploadType.typeName, key: HealthKitSettings.UploadQueryAnchorLastKey))
-        if newAnchor != nil {
-            UserDefaults.standard.set(newAnchor, forKey: HealthKitSettings.prefixedKey(prefix: reader.mode.rawValue, type: uploadType.typeName, key: HealthKitSettings.UploadQueryAnchorKey))
-            UserDefaults.standard.removeObject(forKey: HealthKitSettings.prefixedKey(prefix: reader.mode.rawValue, type: uploadType.typeName, key: HealthKitSettings.UploadQueryAnchorLastKey))
-        }
-    }
 }
 

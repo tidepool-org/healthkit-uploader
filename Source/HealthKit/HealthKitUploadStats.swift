@@ -23,62 +23,23 @@ class HealthKitUploadStats: NSObject {
         self.uploadType = type
         self.uploadTypeName = type.typeName
         self.mode = mode
-        
+        self.statSettings = StatsSettings(mode: mode, type: type)
         super.init()
         self.load()
     }
 
-    private let defaults = UserDefaults.standard
     private(set) var stats: TPUploaderStats
+    private let statSettings: StatsSettings
     
     private(set) var uploadType: HealthKitUploadType
     private(set) var uploadTypeName: String
     private(set) var mode: TPUploader.Mode
-
-    private enum statKey {
-        case uploadCount
-        case startDateHistorical
-        case endDataHistorical
-    }
-    
-    private let allStatKeys: [statKey] = [.uploadCount, .startDateHistorical, .endDataHistorical]
-    private let statKeyDict: [statKey: String] = [
-        .uploadCount: HealthKitSettings.StatsTotalUploadCountKey,
-        .startDateHistorical: HealthKitSettings.StatsStartDateHistoricalSamplesKey,
-        .endDataHistorical: HealthKitSettings.StatsEndDateHistoricalSamplesKey
-    ]
-    
-    private func removeStatForKey(_ key: statKey) {
-        if let keyName = statKeyDict[key] {
-            defaults.removeObject(forKey: HealthKitSettings.prefixedKey(prefix: self.mode.rawValue, type: self.uploadTypeName, key: keyName))
-        } else {
-            DDLogError("MISSING KEY!")
-        }
-    }
     
     func resetPersistentState() {
         DDLogVerbose("HealthKitUploadStats:\(#function) type: \(uploadType.typeName), mode: \(mode.rawValue)")
 
-        for key in allStatKeys {
-            removeStatForKey(key)
-        }
-        
-        defaults.removeObject(forKey: HealthKitSettings.prefixedKey(prefix: self.mode.rawValue, type: self.uploadTypeName, key: HealthKitSettings.StatsTotalUploadCountKey))
-
-        defaults.removeObject(forKey: HealthKitSettings.prefixedKey(prefix: self.mode.rawValue, type: self.uploadTypeName, key: HealthKitSettings.StatsStartDateHistoricalSamplesKey))
-        defaults.removeObject(forKey: HealthKitSettings.prefixedKey(prefix: self.mode.rawValue, type: self.uploadTypeName, key: HealthKitSettings.StatsEndDateHistoricalSamplesKey))
-        defaults.removeObject(forKey: HealthKitSettings.prefixedKey(prefix: self.mode.rawValue, type: self.uploadTypeName, key: HealthKitSettings.StatsTotalDaysHistoricalSamplesKey))
-        defaults.removeObject(forKey: HealthKitSettings.prefixedKey(prefix: self.mode.rawValue, type: self.uploadTypeName, key: HealthKitSettings.StatsCurrentDayHistoricalKey))
-        
-        defaults.removeObject(forKey: HealthKitSettings.prefixedKey(prefix: self.mode.rawValue, type: self.uploadTypeName, key: HealthKitSettings.StatsLastUploadAttemptTimeKey))
-        defaults.removeObject(forKey: HealthKitSettings.prefixedKey(prefix: self.mode.rawValue, type: self.uploadTypeName, key: HealthKitSettings.StatsLastUploadAttemptSampleCountKey))
-        defaults.removeObject(forKey: HealthKitSettings.prefixedKey(prefix: self.mode.rawValue, type: self.uploadTypeName, key: HealthKitSettings.StatsLastUploadAttemptEarliestSampleTimeKey))
-        defaults.removeObject(forKey: HealthKitSettings.prefixedKey(prefix: self.mode.rawValue, type: self.uploadTypeName, key: HealthKitSettings.StatsLastUploadAttemptLatestSampleTimeKey))
-        
-        defaults.removeObject(forKey: HealthKitSettings.prefixedKey(prefix: self.mode.rawValue, type: self.uploadTypeName, key: HealthKitSettings.StatsLastSuccessfulUploadTimeKey))
-        defaults.removeObject(forKey: HealthKitSettings.prefixedKey(prefix: self.mode.rawValue, type: self.uploadTypeName, key: HealthKitSettings.StatsLastSuccessfulUploadEarliestSampleTimeKey))
-        defaults.removeObject(forKey: HealthKitSettings.prefixedKey(prefix: self.mode.rawValue, type: self.uploadTypeName, key: HealthKitSettings.StatsLastSuccessfulUploadLatestSampleTimeKey))
-        
+        statSettings.resetAllKeys()
+        self.stats = TPUploaderStats(typeName: uploadTypeName, mode: mode)
         self.load()
     }
 
@@ -86,36 +47,41 @@ class HealthKitUploadStats: NSObject {
         DDLogInfo("Attempting to upload: \(sampleCount) samples, at: \(uploadAttemptTime), with earliest sample time: \(earliestSampleTime), with latest sample time: \(latestSampleTime), mode: \(self.mode), type: \(self.uploadTypeName)")
         
         self.stats.lastUploadAttemptTime = uploadAttemptTime
+        statSettings.updateDateSettingForKey(.lastUploadAttemptTimeKey, value: uploadAttemptTime)
+
         self.stats.lastUploadAttemptSampleCount = sampleCount
-        
+        statSettings.updateIntSettingForKey(.lastUploadAttemptSampleCountKey, value: sampleCount)
+
         guard sampleCount > 0 else {
             DDLogInfo("Upload with zero samples (deletes only)")
             return
         }
         
         self.stats.lastUploadAttemptEarliestSampleTime = earliestSampleTime
-        defaults.set(self.stats.lastUploadAttemptEarliestSampleTime, forKey: HealthKitSettings.prefixedKey(prefix: self.mode.rawValue, type: self.uploadTypeName, key: HealthKitSettings.StatsLastUploadAttemptEarliestSampleTimeKey))
+        statSettings.updateDateSettingForKey(.lastUploadAttemptEarliestSampleTimeKey, value: earliestSampleTime)
 
         self.stats.lastUploadAttemptLatestSampleTime = latestSampleTime
-        defaults.set(self.stats.lastUploadAttemptLatestSampleTime, forKey: HealthKitSettings.prefixedKey(prefix: self.mode.rawValue, type: self.uploadTypeName, key: HealthKitSettings.StatsLastUploadAttemptLatestSampleTimeKey))
-        
-        defaults.set(self.stats.lastUploadAttemptTime, forKey: HealthKitSettings.prefixedKey(prefix: self.mode.rawValue, type: self.uploadTypeName, key: HealthKitSettings.StatsLastUploadAttemptTimeKey))
-        defaults.set(self.stats.lastUploadAttemptSampleCount, forKey: HealthKitSettings.prefixedKey(prefix: self.mode.rawValue, type: self.uploadTypeName, key: HealthKitSettings.StatsLastUploadAttemptSampleCountKey))
-        
+        statSettings.updateDateSettingForKey(.lastUploadAttemptLatestSampleTimeKey, value: latestSampleTime)
+
+        postNotifications([TPUploaderNotifications.Updated])
+    }
+    
+    private func postNotifications(_ notificationNames: [String]) {
         let uploadInfo : Dictionary<String, Any> = [
             "type" : self.uploadTypeName,
             "mode" : self.mode
         ]
-
         DispatchQueue.main.async {
-            NotificationCenter.default.post(Notification(name: Notification.Name(rawValue: TPUploaderNotifications.Updated), object: self.mode, userInfo: uploadInfo))
+            for name in notificationNames {
+                NotificationCenter.default.post(Notification(name: Notification.Name(rawValue: name), object: self.mode, userInfo: uploadInfo))
+            }
         }
     }
     
     func updateHistoricalStatsForEndState() {
         // call when upload finishes because no more data has been found. This simply moves the curret day pointer to the end...
         self.stats.currentDayHistorical = self.stats.totalDaysHistorical
-        defaults.set(self.stats.currentDayHistorical, forKey: HealthKitSettings.prefixedKey(prefix: self.mode.rawValue, type: self.uploadTypeName, key: HealthKitSettings.StatsCurrentDayHistoricalKey))
+        statSettings.updateIntSettingForKey(.currentDayHistoricalKey, value: self.stats.currentDayHistorical)
     }
     
     func updateForSuccessfulUpload(lastSuccessfulUploadTime: Date) {
@@ -131,36 +97,28 @@ class HealthKitUploadStats: NSObject {
         self.stats.lastSuccessfulUploadTime = lastSuccessfulUploadTime
 
         self.stats.lastSuccessfulUploadEarliestSampleTime = self.stats.lastUploadAttemptEarliestSampleTime
-        defaults.set(self.stats.lastSuccessfulUploadEarliestSampleTime, forKey: HealthKitSettings.prefixedKey(prefix: self.mode.rawValue, type: self.uploadTypeName, key: HealthKitSettings.StatsLastSuccessfulUploadEarliestSampleTimeKey))
+        statSettings.updateDateSettingForKey(.lastSuccessfulUploadEarliestSampleTimeKey, value: self.stats.lastSuccessfulUploadEarliestSampleTime)
 
         self.stats.lastSuccessfulUploadLatestSampleTime = self.stats.lastUploadAttemptLatestSampleTime
-        defaults.set(self.stats.lastSuccessfulUploadLatestSampleTime, forKey: HealthKitSettings.prefixedKey(prefix: self.mode.rawValue, type: self.uploadTypeName, key: HealthKitSettings.StatsLastSuccessfulUploadLatestSampleTimeKey))
+        statSettings.updateDateSettingForKey(.lastSuccessfulUploadLatestSampleTimeKey, value: self.stats.lastSuccessfulUploadLatestSampleTime)
 
         if self.mode != TPUploader.Mode.Current {
             if self.stats.totalDaysHistorical > 0 {
                 self.stats.currentDayHistorical = self.stats.startDateHistoricalSamples.differenceInDays(self.stats.lastSuccessfulUploadLatestSampleTime)
             }
-            defaults.set(self.stats.currentDayHistorical, forKey: HealthKitSettings.prefixedKey(prefix: self.mode.rawValue, type: self.uploadTypeName, key: HealthKitSettings.StatsCurrentDayHistoricalKey))
+            statSettings.updateIntSettingForKey(.currentDayHistoricalKey, value: self.stats.currentDayHistorical)
         }
         
-        defaults.set(self.stats.lastSuccessfulUploadTime, forKey: HealthKitSettings.prefixedKey(prefix: self.mode.rawValue, type: self.uploadTypeName, key: HealthKitSettings.StatsLastSuccessfulUploadTimeKey))
-        defaults.set(self.stats.totalUploadCount, forKey: HealthKitSettings.prefixedKey(prefix: self.mode.rawValue, type: self.uploadTypeName, key: HealthKitSettings.StatsTotalUploadCountKey))
+        statSettings.updateDateSettingForKey(.lastSuccessfulUploadTimeKey, value: self.stats.lastSuccessfulUploadTime)
+        statSettings.updateIntSettingForKey(.uploadCountKey, value: self.stats.totalUploadCount)
         
-        let message = "Successfully uploaded \(self.stats.lastUploadAttemptSampleCount) samples, upload time: \(lastSuccessfulUploadTime), earliest sample date: \(self.stats.lastSuccessfulUploadEarliestSampleTime), latest sample date: \(self.stats.lastSuccessfulUploadLatestSampleTime), mode: \(self.mode), type: \(self.uploadTypeName). "
+        let message = "Successfully uploaded \(self.stats.lastUploadAttemptSampleCount) samples, upload time: \(lastSuccessfulUploadTime), earliest sample date: \(self.stats.lastSuccessfulUploadEarliestSampleTime), latest sample date: \(self.stats.lastSuccessfulUploadLatestSampleTime), (\(self.mode), \(self.uploadTypeName)). "
         DDLogInfo(message)
         if self.stats.totalDaysHistorical > 0 {
             DDLogInfo("Uploaded \(self.stats.currentDayHistorical) of \(self.stats.totalDaysHistorical) days of historical data")
         }
 
-        let uploadInfo : Dictionary<String, Any> = [
-            "type" : self.uploadTypeName,
-            "mode" : self.mode
-        ]
-
-        DispatchQueue.main.async {
-            NotificationCenter.default.post(Notification(name: Notification.Name(rawValue: TPUploaderNotifications.Updated), object: self.mode, userInfo: uploadInfo))
-            NotificationCenter.default.post(Notification(name: Notification.Name(rawValue: TPUploaderNotifications.UploadSuccessful), object: self.mode, userInfo: uploadInfo))
-        }
+        postNotifications([TPUploaderNotifications.Updated, TPUploaderNotifications.UploadSuccessful])
     }
 
     func updateHistoricalSamplesDateRangeFromHealthKitAsync() {
@@ -169,21 +127,19 @@ class HealthKitUploadStats: NSObject {
         let sampleType = uploadType.hkSampleType()!
         HealthKitManager.sharedInstance.findSampleDateRange(sampleType: sampleType) {
             (error: NSError?, startDate: Date?, endDate: Date?) in
-            let defaults = UserDefaults.standard
             
             if error != nil {
                 DDLogError("Failed to update historical samples date range, error: \(String(describing: error))")
             } else if let startDate = startDate {
                 self.stats.startDateHistoricalSamples = startDate
-                
-                let endDate = defaults.object(forKey: HealthKitSettings.prefixedKey(prefix: self.mode.rawValue, type: self.uploadTypeName, key: HealthKitSettings.UploadQueryEndDateKey)) as? Date ?? Date()
+                self.statSettings.updateDateSettingForKey(.startDateHistoricalSamplesKey, value: startDate)
+                let endDate = self.statSettings.dateForKeyIfExists(.queryEndDateKey) ?? Date()
                 self.stats.endDateHistoricalSamples = endDate
+                self.statSettings.updateDateSettingForKey(.endDateHistoricalSamplesKey, value: endDate)
+                
                 self.stats.totalDaysHistorical = self.stats.startDateHistoricalSamples.differenceInDays(self.stats.endDateHistoricalSamples) + 1
-                
-                defaults.set(self.stats.startDateHistoricalSamples, forKey: HealthKitSettings.prefixedKey(prefix: self.mode.rawValue, type: self.uploadTypeName, key: HealthKitSettings.StatsStartDateHistoricalSamplesKey))
-                defaults.set(self.stats.endDateHistoricalSamples, forKey: HealthKitSettings.prefixedKey(prefix: self.mode.rawValue, type: self.uploadTypeName, key: HealthKitSettings.StatsEndDateHistoricalSamplesKey))
-                defaults.set(self.stats.totalDaysHistorical, forKey: HealthKitSettings.prefixedKey(prefix: self.mode.rawValue, type: self.uploadTypeName, key: HealthKitSettings.StatsTotalDaysHistoricalSamplesKey))
-                
+                self.statSettings.updateIntSettingForKey(.totalDaysHistoricalSamplesKey, value: self.stats.totalDaysHistorical)
+              
                 DDLogInfo("Updated historical samples date range, start date:\(startDate), end date: \(endDate)")
             }
         }
@@ -194,26 +150,15 @@ class HealthKitUploadStats: NSObject {
     fileprivate func load(_ resetUser: Bool = false) {
         DDLogVerbose("\(#function)")
         
-        let statsExist = defaults.object(forKey: HealthKitSettings.prefixedKey(prefix: self.mode.rawValue, type: self.uploadTypeName, key: HealthKitSettings.StatsTotalUploadCountKey)) != nil
+        let statsExist = statSettings.objectForKey(.uploadCountKey) != nil
         if statsExist {
-            let lastSuccessfulUploadTime = defaults.object(forKey: HealthKitSettings.prefixedKey(prefix: self.mode.rawValue, type: self.uploadTypeName, key: HealthKitSettings.StatsLastSuccessfulUploadTimeKey)) as? Date
-            self.stats.lastSuccessfulUploadTime = lastSuccessfulUploadTime ?? Date.distantPast
-
-            let lastSuccessfulUploadLatestSampleTime = defaults.object(forKey: HealthKitSettings.prefixedKey(prefix: self.mode.rawValue, type: self.uploadTypeName, key: HealthKitSettings.StatsLastSuccessfulUploadLatestSampleTimeKey)) as? Date
-            self.stats.lastSuccessfulUploadLatestSampleTime = lastSuccessfulUploadLatestSampleTime ?? Date.distantPast
-
-            self.stats.totalUploadCount = defaults.integer(forKey: HealthKitSettings.prefixedKey(prefix: self.mode.rawValue, type: self.uploadTypeName, key: HealthKitSettings.StatsTotalUploadCountKey))
-            
-            let lastUploadAttemptTime = defaults.object(forKey: HealthKitSettings.prefixedKey(prefix: self.mode.rawValue, type: self.uploadTypeName, key: HealthKitSettings.StatsLastUploadAttemptTimeKey)) as? Date
-            self.stats.lastUploadAttemptTime = lastUploadAttemptTime ?? Date.distantPast
-            
-            let lastUploadAttemptEarliestSampleTime = defaults.object(forKey: HealthKitSettings.prefixedKey(prefix: self.mode.rawValue, type: self.uploadTypeName, key: HealthKitSettings.StatsLastUploadAttemptEarliestSampleTimeKey)) as? Date
-            self.stats.lastUploadAttemptEarliestSampleTime = lastUploadAttemptEarliestSampleTime ?? Date.distantPast
-
-            let lastUploadAttemptLatestSampleTime = defaults.object(forKey: HealthKitSettings.prefixedKey(prefix: self.mode.rawValue, type: self.uploadTypeName, key: HealthKitSettings.StatsLastUploadAttemptLatestSampleTimeKey)) as? Date
-            self.stats.lastUploadAttemptLatestSampleTime = lastUploadAttemptLatestSampleTime ?? Date.distantPast
-
-            self.stats.lastUploadAttemptSampleCount = defaults.integer(forKey: HealthKitSettings.prefixedKey(prefix: self.mode.rawValue, type: self.uploadTypeName, key: HealthKitSettings.StatsLastUploadAttemptSampleCountKey))
+            self.stats.lastSuccessfulUploadTime = statSettings.dateForKey(.lastSuccessfulUploadTimeKey)
+            self.stats.lastSuccessfulUploadLatestSampleTime = statSettings.dateForKey(.lastSuccessfulUploadLatestSampleTimeKey)
+            self.stats.totalUploadCount = statSettings.intForKey(.uploadCountKey)
+            self.stats.lastUploadAttemptTime = statSettings.dateForKey(.lastUploadAttemptTimeKey)
+            self.stats.lastUploadAttemptEarliestSampleTime = statSettings.dateForKey(.lastUploadAttemptEarliestSampleTimeKey)
+            self.stats.lastUploadAttemptLatestSampleTime = statSettings.dateForKey(.lastUploadAttemptLatestSampleTimeKey)
+            self.stats.lastUploadAttemptSampleCount = statSettings.intForKey(.lastUploadAttemptSampleCountKey)
         } else {
             self.stats.lastSuccessfulUploadTime = Date.distantPast
             self.stats.lastSuccessfulUploadLatestSampleTime = Date.distantPast
@@ -225,11 +170,11 @@ class HealthKitUploadStats: NSObject {
             self.stats.lastUploadAttemptSampleCount = 0
         }
 
-        if let startDateHistoricalSamplesObject = defaults.object(forKey: HealthKitSettings.prefixedKey(prefix: self.mode.rawValue, type: self.uploadTypeName, key: HealthKitSettings.StatsStartDateHistoricalSamplesKey)),
-            let endDateHistoricalSamplesObject = defaults.object(forKey: HealthKitSettings.prefixedKey(prefix: self.mode.rawValue, type: self.uploadTypeName, key: HealthKitSettings.StatsEndDateHistoricalSamplesKey))
+        if let startDateHistoricalSamplesObject = statSettings.objectForKey(.startDateHistoricalSamplesKey),
+            let endDateHistoricalSamplesObject = statSettings.objectForKey(.endDateHistoricalSamplesKey)
         {
-            self.stats.totalDaysHistorical = defaults.integer(forKey: HealthKitSettings.prefixedKey(prefix: self.mode.rawValue, type: self.uploadTypeName, key: HealthKitSettings.StatsTotalDaysHistoricalSamplesKey))
-            self.stats.currentDayHistorical = defaults.integer(forKey: HealthKitSettings.prefixedKey(prefix: self.mode.rawValue, type: self.uploadTypeName, key: HealthKitSettings.StatsCurrentDayHistoricalKey))
+            self.stats.totalDaysHistorical = statSettings.intForKey(.totalDaysHistoricalSamplesKey)
+            self.stats.currentDayHistorical = statSettings.intForKey(.currentDayHistoricalKey)
             self.stats.startDateHistoricalSamples = startDateHistoricalSamplesObject as? Date ?? Date.distantPast
             self.stats.endDateHistoricalSamples = endDateHistoricalSamplesObject as? Date ?? Date.distantPast
         } else {

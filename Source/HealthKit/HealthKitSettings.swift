@@ -13,49 +13,301 @@
 * not, you can obtain one from Tidepool Project at tidepool.org.
 */
 
-class HealthKitSettings {
-    // Connect to Health interface
-    static let InterfaceEnabledKey = "kHealthKitInterfaceEnabledKey"
-    static let InterfaceUserIdKey = "kUserIdForHealthKitInterfaceKey"
-    static let InterfaceUserNameKey = "kUserNameForHealthKitInterfaceKey"
-    static let HKDataUploadIdKey = "kHKDataUploadIdKey"
+import HealthKit
 
-    // Authorization
-    static let AuthorizationRequestedForUploaderSamplesKey = "authorizationRequestedForUploaderSamples"
-    static let AuthorizationRequestedForBloodGlucoseSampleWritesKey = "authorizationRequestedForBloodGlucoseSampleWrites"
+class HealthKitUploaderSettings {
+    let defaults = UserDefaults.standard
     
-    // Other
-    static let LastExecutedUploaderVersionKey = "LastExecutedUploaderVersionKey"
-    static let HasPresentedSyncUI = "HasPresentedSyncUI"
+    func intSettingForKey(_ key: String) -> Int {
+        return 0
+    }
+}
 
-    // Uploads (prefix using prefixedKey helper)
-    static let HasPendingUploadsKey = "HasPendingUploadsKey"
+class GlobalSettings: HealthKitUploaderSettings {
+    static let sharedInstance = GlobalSettings()
     
-    // HK type anchor query (prefix using prefixedKey helper)
-    static let UploadQueryAnchorKey = "QueryAnchorKey"
-    static let UploadQueryAnchorLastKey = "QueryAnchorLastKey"
-    static let UploadQueryStartDateKey = "QueryStartDateKey"
-    static let UploadQueryEndDateKey = "QueryEndDateKey"
-
-    // Stats (prefix using prefixedKey helper)
-    static let StatsTotalUploadCountKey = "StatsTotalUploadCountKey"
-    static let StatsLastUploadAttemptSampleCountKey = "StatsLastUploadAttemptSampleCountKey"
-    static let StatsLastUploadAttemptTimeKey = "StatsLastUploadAttemptTimeKey"
-    static let StatsLastUploadAttemptEarliestSampleTimeKey = "StatsLastUploadAttemptEarliestSampleTimeKey"
-    static let StatsLastUploadAttemptLatestSampleTimeKey = "StatsLastUploadAttemptLatestSampleTimeKey"
-    static let StatsLastSuccessfulUploadTimeKey = "StatsLastSuccessfulUploadTimeKey"
-    static let StatsLastSuccessfulUploadLatestSampleTimeKey = "StatsLastSuccessfulUploadLatestSampleTimeKey"
-    static let StatsLastSuccessfulUploadEarliestSampleTimeKey = "StatsLastSuccessfulUploadEarliestSampleTimeKey"
-    static let StatsStartDateHistoricalSamplesKey = "StatsStartDateHistoricalSamplesKey"
-    static let StatsEndDateHistoricalSamplesKey = "StatsEndDateHistoricalSamplesKey"
-    static let StatsTotalDaysHistoricalSamplesKey = "StatsTotalDaysHistoricalSamplesKey"
-    static let StatsCurrentDayHistoricalKey = "StatsCurrentDayHistoricalKey"
-    
-    // Helper for HealthKitSettings keys that are prefixed with a mode and/or upload type string
-    class func prefixedKey(prefix: String, type: String, key: String) -> String {
-        let result = "\(prefix)-\(type)\(key)"
-        //print("prefixedKey: \(result)")
-        return result
+    enum GlobalSettingKey {
+        case interfaceEnabledKey
+        case interfaceUserIdKey
+        case interfaceUserNameKey
+        case hkDataUploadIdKey
+        case authorizationRequestedForUploaderSamplesKey
+        case lastExecutedUploaderVersionKey
+        case hasPresentedSyncUI
     }
     
+    func removeSettingForKey(_ key: GlobalSettingKey) {
+        if let keyName = GlobalSettings.globalSettingKeyDict[key] {
+            defaults.removeObject(forKey: keyName)
+            DDLogVerbose("removing setting \(keyName)")
+        } else {
+            DDLogError("MISSING KEY!")
+        }
+    }
+
+    func boolForKey(_ key: GlobalSettingKey) -> Bool {
+        if let keyName = GlobalSettings.globalSettingKeyDict[key] {
+            return defaults.bool(forKey: keyName)
+        } else {
+            DDLogError("MISSING KEY!")
+            return false
+        }
+    }
+
+    func intForKey(_ key: GlobalSettingKey) -> Int {
+        if let keyName = GlobalSettings.globalSettingKeyDict[key] {
+            return defaults.integer(forKey: keyName)
+        } else {
+            DDLogError("MISSING KEY!")
+            return 0
+        }
+    }
+
+    func stringForKey(_ key: GlobalSettingKey) -> String? {
+        if let keyName = GlobalSettings.globalSettingKeyDict[key] {
+            return defaults.string(forKey: keyName)
+        } else {
+            DDLogError("MISSING KEY!")
+            return nil
+        }
+    }
+
+    func updateBoolForKey(_ key: GlobalSettingKey, value: Bool) {
+        if let keyName = GlobalSettings.globalSettingKeyDict[key] {
+            defaults.set(value, forKey: keyName)
+        } else {
+            DDLogError("MISSING KEY!")
+        }
+    }
+
+    func updateIntForKey(_ key: GlobalSettingKey, value: Int) {
+        if let keyName = GlobalSettings.globalSettingKeyDict[key] {
+            defaults.set(value, forKey: keyName)
+        } else {
+            DDLogError("MISSING KEY!")
+        }
+    }
+
+    func updateStringForKey(_ key: GlobalSettingKey, value: String?) {
+        if let keyName = GlobalSettings.globalSettingKeyDict[key] {
+            defaults.set(value, forKey: keyName)
+        } else {
+            DDLogError("MISSING KEY!")
+        }
+    }
+
+    static let globalSettingKeyDict: [GlobalSettingKey: String] = [
+        .interfaceEnabledKey: "kHealthKitInterfaceEnabledKey",
+        .interfaceUserIdKey: "kUserIdForHealthKitInterfaceKey",
+        .interfaceUserNameKey: "kUserNameForHealthKitInterfaceKey",
+        .hkDataUploadIdKey: "kHKDataUploadIdKey",
+        .authorizationRequestedForUploaderSamplesKey: "authorizationRequestedForUploaderSamples",
+        .lastExecutedUploaderVersionKey: "LastExecutedUploaderVersionKey",
+        .hasPresentedSyncUI: "HasPresentedSyncUI",
+        ]
 }
+
+class PrefixedSettings: HealthKitUploaderSettings {
+    private(set) var uploadTypeName: String
+    private(set) var mode: TPUploader.Mode
+
+    init(mode: TPUploader.Mode, type: HealthKitUploadType) {
+        DDLogVerbose("\(#function)")
+        self.uploadTypeName = type.typeName
+        self.mode = mode
+    }
+    
+    enum PrefixedKey {
+        // stats
+        case uploadCountKey
+        case startDateHistoricalSamplesKey
+        case endDateHistoricalSamplesKey
+        case lastUploadAttemptSampleCountKey
+        case lastUploadAttemptTimeKey
+        case lastUploadAttemptEarliestSampleTimeKey
+        case lastUploadAttemptLatestSampleTimeKey
+        case lastSuccessfulUploadTimeKey
+        case lastSuccessfulUploadLatestSampleTimeKey
+        case lastSuccessfulUploadEarliestSampleTimeKey
+        case totalDaysHistoricalSamplesKey
+        case currentDayHistoricalKey
+        // other
+        case hasPendingUploadsKey
+        case queryAnchorKey
+        case queryAnchorLastKey
+        case queryStartDateKey
+        case queryEndDateKey
+    }
+    
+    func removeSettingForKey(_ key: PrefixedKey) {
+        if let keyName = fullKey(key) {
+            defaults.removeObject(forKey: keyName)
+            DDLogVerbose("removing setting \(keyName)")
+        } else {
+            DDLogError("MISSING KEY!")
+        }
+    }
+    
+    func objectForKey(_ key: PrefixedKey) -> Any? {
+        if let keyName = fullKey(key) {
+            return defaults.object(forKey:keyName)
+        } else {
+            DDLogError("MISSING KEY!")
+            return nil
+        }
+    }
+    
+    func intForKey(_ key: PrefixedKey) -> Int {
+        if let keyName = fullKey(key) {
+            return defaults.integer(forKey: keyName)
+        } else {
+            DDLogError("MISSING KEY!")
+            return 0
+        }
+    }
+
+    func boolForKey(_ key: PrefixedKey) -> Bool {
+        if let keyName = fullKey(key) {
+            return defaults.bool(forKey: keyName)
+        } else {
+            DDLogError("MISSING KEY!")
+            return false
+        }
+    }
+
+    func dateForKey(_ key: PrefixedKey) -> Date {
+        if let keyName = fullKey(key) {
+            if let result = defaults.object(forKey:keyName) as? Date {
+                return result
+            }
+        } else {
+            DDLogError("MISSING KEY!")
+        }
+        return Date.distantPast
+    }
+    
+    func dateForKeyIfExists(_ key: PrefixedKey) -> Date? {
+        if let keyName = fullKey(key) {
+            if let result = defaults.object(forKey:keyName) as? Date {
+                return result
+            }
+         } else {
+            DDLogError("MISSING KEY!")
+        }
+        return nil
+    }
+
+    func anchorForKey(_ key: PrefixedKey) -> HKQueryAnchor? {
+        var anchor: HKQueryAnchor?
+        if let keyName = fullKey(key) {
+            if let anchorData = defaults.object(forKey:keyName) {
+                do {
+                    anchor = try NSKeyedUnarchiver.unarchivedObject(ofClasses: [HKQueryAnchor.self], from: anchorData as! Data) as? HKQueryAnchor
+                } catch {
+                }
+            }
+        } else {
+            DDLogError("MISSING KEY!")
+        }
+        return anchor
+    }
+    
+    func updateAnchorForKey(_ key: PrefixedKey, anchor: HKQueryAnchor?) {
+        let queryAnchorData = anchor != nil ? NSKeyedArchiver.archivedData(withRootObject: anchor!) : nil
+        if let keyName = fullKey(key) {
+            defaults.set(queryAnchorData, forKey: keyName)
+            DDLogVerbose("updated setting \(keyName)")
+        } else {
+            DDLogError("MISSING KEY!")
+        }
+    }
+    
+    func updateIntSettingForKey(_ key: PrefixedKey, value: Int) {
+        if let keyName = fullKey(key) {
+            defaults.set(value, forKey: keyName)
+            DDLogVerbose("update setting \(keyName) to \(value)")
+        } else {
+            DDLogError("MISSING KEY!")
+        }
+    }
+    
+    func updateBoolSettingForKey(_ key: PrefixedKey, value: Bool) {
+        if let keyName = fullKey(key) {
+            defaults.set(value, forKey: keyName)
+            DDLogVerbose("update setting \(keyName) to \(value)")
+        } else {
+            DDLogError("MISSING KEY!")
+        }
+    }
+
+    func updateDateSettingForKey(_ key: PrefixedKey, value: Date) {
+        if let keyName = fullKey(key) {
+            defaults.set(value, forKey: keyName)
+            DDLogVerbose("update setting \(keyName) to \(value)")
+        } else {
+            DDLogError("MISSING KEY!")
+        }
+    }
+    
+    private func fullKey(_ key: PrefixedKey) -> String? {
+        if let baseKey = PrefixedSettings.prefixedKeyDict[key] {
+            return prefixedKey(baseKey)
+        } else {
+            return nil
+        }
+    }
+    
+    static let prefixedKeyDict: [PrefixedKey: String] = [
+        // stats
+        .uploadCountKey: "StatsTotalUploadCountKey",
+        .startDateHistoricalSamplesKey: "StatsStartDateHistoricalSamplesKey",
+        .endDateHistoricalSamplesKey: "StatsEndDateHistoricalSamplesKey",
+        .lastUploadAttemptSampleCountKey: "StatsLastUploadAttemptSampleCountKey",
+        .lastUploadAttemptTimeKey: "StatsLastUploadAttemptTimeKey",
+        .lastUploadAttemptEarliestSampleTimeKey: "StatsLastUploadAttemptEarliestSampleTimeKey",
+        .lastUploadAttemptLatestSampleTimeKey: "StatsLastUploadAttemptLatestSampleTimeKey",
+        .lastSuccessfulUploadTimeKey: "StatsLastSuccessfulUploadTimeKey",
+        .lastSuccessfulUploadLatestSampleTimeKey: "StatsLastSuccessfulUploadLatestSampleTimeKey",
+        .lastSuccessfulUploadEarliestSampleTimeKey: "StatsLastSuccessfulUploadEarliestSampleTimeKey",
+        .totalDaysHistoricalSamplesKey: "StatsTotalDaysHistoricalSamplesKey",
+        .currentDayHistoricalKey: "StatsCurrentDayHistoricalKey",
+        // other
+        .hasPendingUploadsKey: "HasPendingUploadsKey",
+        .queryAnchorKey: "QueryAnchorKey",
+        .queryAnchorLastKey: "QueryAnchorLastKey",
+        .queryStartDateKey: "QueryStartDateKey",
+        .queryEndDateKey: "QueryEndDateKey",
+    ]
+
+    func prefixedKey(_ key: String) -> String {
+        let result = "\(self.mode)-\(self.uploadTypeName)\(key)"
+        return result
+    }
+}
+
+class StatsSettings: PrefixedSettings {
+ 
+    func resetAllKeys() {
+        DDLogVerbose("StatsSettings (\(uploadTypeName), \(mode))")
+        for key in allStatKeys {
+            removeSettingForKey(key)
+        }
+    }
+    
+    private let allStatKeys: [PrefixedKey] = [.uploadCountKey, .startDateHistoricalSamplesKey, .endDateHistoricalSamplesKey, .lastUploadAttemptSampleCountKey, .lastUploadAttemptEarliestSampleTimeKey, .lastUploadAttemptLatestSampleTimeKey, .lastSuccessfulUploadTimeKey, .lastSuccessfulUploadLatestSampleTimeKey, .lastSuccessfulUploadEarliestSampleTimeKey, .totalDaysHistoricalSamplesKey, .currentDayHistoricalKey]
+    
+}
+
+class UploaderSettings: PrefixedSettings {
+    
+    func resetAllKeys() {
+        DDLogVerbose("UploaderSettings (\(uploadTypeName), \(mode))")
+        for key in allUploaderKeys {
+            removeSettingForKey(key)
+        }
+    }
+    
+    private let allUploaderKeys: [PrefixedKey] = [.queryAnchorKey, .queryAnchorLastKey, .queryStartDateKey, .queryEndDateKey]
+    
+}
+

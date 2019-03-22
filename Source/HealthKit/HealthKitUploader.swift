@@ -27,7 +27,8 @@ class HealthKitUploader: NSObject, URLSessionDelegate, URLSessionTaskDelegate, U
         
         self.mode = mode
         self.typeString = uploadType.typeName
-
+        self.uploaderSettings = UploaderSettings(mode: mode, type: uploadType)
+        
         super.init()
 
         self.ensureUploadSession(isBackground: false)
@@ -37,9 +38,10 @@ class HealthKitUploader: NSObject, URLSessionDelegate, URLSessionTaskDelegate, U
     private(set) var mode: TPUploader.Mode
     private(set) var typeString: String
     weak var delegate: HealthKitSampleUploaderDelegate?
+    private let uploaderSettings: UploaderSettings
     
     func hasPendingUploadTasks() -> Bool {
-        return UserDefaults.standard.bool(forKey: HealthKitSettings.prefixedKey(prefix: self.mode.rawValue, type: typeString, key: HealthKitSettings.HasPendingUploadsKey))
+        return uploaderSettings.boolForKey(.hasPendingUploadsKey)
     }
     
     private var lastUploadSamplePostBody: Data?
@@ -260,7 +262,7 @@ class HealthKitUploader: NSObject, URLSessionDelegate, URLSessionTaskDelegate, U
     
     // MARK: Private
     
-    fileprivate func ensureUploadSession(isBackground: Bool) {
+    private func ensureUploadSession(isBackground: Bool) {
         DDLogVerbose("type: \(typeString), mode: \(mode.rawValue)")
         
         guard (isBackground && self.backgroundUploadSession == nil) || (!isBackground && self.foregroundUploadSession == nil) else {
@@ -284,7 +286,7 @@ class HealthKitUploader: NSObject, URLSessionDelegate, URLSessionTaskDelegate, U
         DDLogInfo("Created upload session. isBackground:\(isBackground) Mode: \(self.mode)")
     }
 
-    fileprivate func createBodyFileForBatchSamplesDelete(data: HealthKitUploadData) throws -> (URL?, Data?) {
+    private func createBodyFileForBatchSamplesDelete(data: HealthKitUploadData) throws -> (URL?, Data?) {
         DDLogVerbose("type: \(typeString), mode: \(mode.rawValue)")
         
         // Prepare upload delete body
@@ -305,10 +307,16 @@ class HealthKitUploader: NSObject, URLSessionDelegate, URLSessionTaskDelegate, U
         }
         DDLogVerbose("Count of samples to delete: \(validatedSamples.count)")
         //DDLogInfo("Next samples to delete: \(validatedSamples)")
-        return try self.savePostBodyForUpload(samples: validatedSamples, identifier: HealthKitSettings.prefixedKey(prefix: "", type: self.typeString, key: "deleteBatchSamples.data"))
+        return try self.savePostBodyForUpload(samples: validatedSamples, identifier: prefixedKey(prefix: "", type: self.typeString, key: "deleteBatchSamples.data"))
     }
 
-    fileprivate func createBodyFileForBatchSamplesUpload(data: HealthKitUploadData) throws -> (URL?, Data?) {
+    func prefixedKey(prefix: String, type: String, key: String) -> String {
+        let result = "\(prefix)-\(type)\(key)"
+        //print("prefixedKey: \(result)")
+        return result
+    }
+
+    private func createBodyFileForBatchSamplesUpload(data: HealthKitUploadData) throws -> (URL?, Data?) {
         DDLogVerbose("type: \(typeString), mode: \(mode.rawValue)")
         
         // Prepare upload post body
@@ -330,10 +338,10 @@ class HealthKitUploader: NSObject, URLSessionDelegate, URLSessionTaskDelegate, U
         }
         DDLogVerbose("Count of samples to upload: \(validatedSamples.count)")
         // Note: exceptions during serialization are NSException type, and won't get caught by a Swift do/catch, so pre-validate!
-        return try self.savePostBodyForUpload(samples: validatedSamples, identifier: HealthKitSettings.prefixedKey(prefix: "", type: self.typeString, key: "uploadBatchSamples.data"))
+        return try self.savePostBodyForUpload(samples: validatedSamples, identifier: prefixedKey(prefix: "", type: self.typeString, key: "uploadBatchSamples.data"))
     }
 
-    fileprivate func savePostBodyForUpload(samples: [[String: AnyObject]], identifier: String) throws -> (URL?, Data?) {
+    private func savePostBodyForUpload(samples: [[String: AnyObject]], identifier: String) throws -> (URL?, Data?) {
         DDLogVerbose("identifier: \(identifier)")
  
         let postBody = try JSONSerialization.data(withJSONObject: samples)
@@ -343,27 +351,27 @@ class HealthKitUploader: NSObject, URLSessionDelegate, URLSessionTaskDelegate, U
         return (postBodyURL, postBody)
     }
     
-    fileprivate func getUploadURLForIdentifier(with identifier: String) -> URL {
+    private func getUploadURLForIdentifier(with identifier: String) -> URL {
         let cachesDirectory = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first!
         let postBodyURL = cachesDirectory.appendingPathComponent(identifier)
         return postBodyURL
     }
     
-    fileprivate func setPendingUploadsState(uploadTaskIsPending: Bool) {
-        UserDefaults.standard.set(uploadTaskIsPending, forKey: HealthKitSettings.prefixedKey(prefix: self.mode.rawValue, type: self.typeString, key: HealthKitSettings.HasPendingUploadsKey))
+    private func setPendingUploadsState(uploadTaskIsPending: Bool) {
+        uploaderSettings.updateBoolSettingForKey(.hasPendingUploadsKey, value: uploadTaskIsPending)
     }
 
-    fileprivate var foregroundUploadSession: URLSession?
-    fileprivate var backgroundUploadSession: URLSession?
+    private var foregroundUploadSession: URLSession?
+    private var backgroundUploadSession: URLSession?
     
     // use the following with prefixedLocalId to create ids unique to mode and upload type...
-    fileprivate let backgroundUploadSessionIdentifier = "UploadSessionId"
-    fileprivate let uploadSamplesTaskDescription = "Upload samples"
-    fileprivate let deleteSamplesTaskDescription = "Delete samples"
+    private let backgroundUploadSessionIdentifier = "UploadSessionId"
+    private let uploadSamplesTaskDescription = "Upload samples"
+    private let deleteSamplesTaskDescription = "Delete samples"
     // nil if no deletes for this type, otherwise the file url for the delete body...
-    fileprivate let deleteSamplesDataUrlKey = "DeleteSamplesDataUrl"
+    private let deleteSamplesDataUrlKey = "DeleteSamplesDataUrl"
  
-    fileprivate func prefixedLocalId(_ key: String) -> String {
+    private func prefixedLocalId(_ key: String) -> String {
         return "\(self.mode)-\(self.typeString)\(key)"
     }
 

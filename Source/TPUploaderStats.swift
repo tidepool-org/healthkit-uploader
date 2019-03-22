@@ -25,7 +25,7 @@ public struct TPUploaderStats {
     public var totalDaysHistorical = 0
     public var currentDayHistorical = 0
 
-    // Currently unused...
+    // Currently unused in UI...
     public var lastUploadAttemptTime = Date.distantPast
     public var lastUploadAttemptSampleCount = 0
     public var lastSuccessfulUploadEarliestSampleTime = Date.distantPast

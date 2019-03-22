@@ -24,6 +24,8 @@ class HealthKitManager {
         DDLogVerbose("\(#function)")
     }
     
+    let settings = GlobalSettings.sharedInstance
+    
     let healthStore: HKHealthStore? = {
         return HKHealthStore.isHealthDataAvailable() ? HKHealthStore() : nil
     }()
@@ -33,14 +35,10 @@ class HealthKitManager {
     }()
     
     func authorizationRequestedForUploaderSamples() -> Bool {
-        return UserDefaults.standard.bool(forKey: HealthKitSettings.AuthorizationRequestedForUploaderSamplesKey)
+        return settings.boolForKey(.authorizationRequestedForUploaderSamplesKey)
     }
     
-    func authorizationRequestedForBloodGlucoseSampleWrites() -> Bool {
-        return UserDefaults.standard.bool(forKey: HealthKitSettings.AuthorizationRequestedForBloodGlucoseSampleWritesKey)
-    }
-    
-    func authorize(shouldAuthorizeUploaderSampleReads: Bool, shouldAuthorizeBloodGlucoseSampleWrites: Bool, completion: @escaping (_ success:Bool, _ error:NSError?) -> Void = {(_, _) in })
+    func authorize(completion: @escaping (_ success:Bool, _ error:NSError?) -> Void = {(_, _) in })
     {
         DDLogVerbose("\(#function)")
         
@@ -60,34 +58,17 @@ class HealthKitManager {
             return
         }
         
-        var readTypes: Set<HKObjectType>?
-        var writeTypes: Set<HKSampleType>?
-        if (shouldAuthorizeUploaderSampleReads) {
-            readTypes = Set<HKSampleType>()
-            for uploadType in HealthKitConfiguration.sharedInstance!.healthKitUploadTypes {
-                readTypes!.insert(uploadType.hkSampleType()!)
-            }
-            let biologicalSex = HKObjectType.characteristicType(forIdentifier: .biologicalSex)
-            readTypes!.insert(biologicalSex!)
+        var readTypes = Set<HKObjectType>()
+        for uploadType in HealthKitConfiguration.sharedInstance!.healthKitUploadTypes {
+            readTypes.insert(uploadType.hkSampleType()!)
         }
-        if (shouldAuthorizeBloodGlucoseSampleWrites) {
-            writeTypes = Set<HKSampleType>()
-            writeTypes!.insert(HKSampleType.quantityType(forIdentifier: HKQuantityTypeIdentifier.bloodGlucose)!)
-        }
-        guard readTypes != nil || writeTypes != nil else {
-            DDLogVerbose("No health data authorization requested, ignoring")
-            return
-        }
+        let biologicalSex = HKObjectType.characteristicType(forIdentifier: .biologicalSex)
+        readTypes.insert(biologicalSex!)
         
         if (isHealthDataAvailable) {
-            healthStore!.requestAuthorization(toShare: writeTypes, read: readTypes) { (success, error) -> Void in
+            healthStore!.requestAuthorization(toShare: nil, read: readTypes) { (success, error) -> Void in
                 if success {
-                    if (shouldAuthorizeUploaderSampleReads) {
-                        UserDefaults.standard.set(true, forKey: HealthKitSettings.AuthorizationRequestedForUploaderSamplesKey)
-                    }
-                    if (shouldAuthorizeBloodGlucoseSampleWrites) {
-                        UserDefaults.standard.set(true, forKey: HealthKitSettings.AuthorizationRequestedForBloodGlucoseSampleWritesKey)
-                    }
+                    self.settings.updateBoolForKey(.authorizationRequestedForUploaderSamplesKey, value: true)
                  }
                 
                 authorizationSuccess = success

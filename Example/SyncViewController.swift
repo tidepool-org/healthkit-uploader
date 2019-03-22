@@ -55,8 +55,8 @@ class SyncViewController: UIViewController {
 
         sampleTotalLabels["BloodGlucose"] = bloodGlucoseTotalCnt
         sampleTotalLabels["Insulin"] = insulinTotalCnt
-        sampleTotalLabels["Workout"] = carbTotalCnt
-        sampleTotalLabels["Carb"] = workoutTotalCnt
+        sampleTotalLabels["Carb"] = carbTotalCnt
+        sampleTotalLabels["Workout"] = workoutTotalCnt
     }
     private var hkUploader: TPUploader!
     private var historicalProgressLabels: [String: UILabel] = [:]

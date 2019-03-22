@@ -24,6 +24,8 @@ class HealthKitConfiguration
         HealthKitConfiguration.sharedInstance = self
     }
 
+    let settings = GlobalSettings.sharedInstance
+    
     // MARK: Access, availability, authorization
 
     private(set) var config: TPUploaderConfigInfo
@@ -109,11 +111,9 @@ class HealthKitConfiguration
     /// Note: This sets the current tidepool user as the HealthKit user!
     func enableHealthKitInterface() {
         
-        // _ username: String?, userid: String?, isDSAUser: Bool?, needsUploaderReads: Bool, needsGlucoseWrites: Bool) {
         DDLogVerbose("\(#function)")
         
         let needsUploaderReads = true
-        let needsGlucoseWrites = false
         let username = self.config.currentUserName
         
         guard self.config.currentUserId() != nil else {
@@ -124,8 +124,7 @@ class HealthKitConfiguration
         func configureCurrentHealthKitUser() {
             DDLogVerbose("\(#function)")
             
-            let defaults = UserDefaults.standard
-            defaults.set(true, forKey: HealthKitSettings.InterfaceEnabledKey)
+            settings.updateBoolForKey(.interfaceEnabledKey, value: true)
             if !self.healthKitInterfaceEnabledForCurrentUser() {
                 if self.healthKitInterfaceConfiguredForOtherUser() {
                     // Switching healthkit users, reset HealthKitUploadManager
@@ -135,13 +134,12 @@ class HealthKitConfiguration
                 }
                 // force refetch of upload id because it may have changed for the new user...
                 TPUploaderServiceAPI.connector?.currentUploadId = nil
-                defaults.setValue(config.currentUserId()!, forKey: HealthKitSettings.InterfaceUserIdKey)
-                // may be nil...
-                defaults.setValue(username, forKey: HealthKitSettings.InterfaceUserNameKey)
+                settings.updateStringForKey(.interfaceUserIdKey, value: config.currentUserId()!)
+                settings.updateStringForKey(.interfaceUserNameKey, value: username)
             }
         }
         
-        HealthKitManager.sharedInstance.authorize(shouldAuthorizeUploaderSampleReads: needsUploaderReads, shouldAuthorizeBloodGlucoseSampleWrites: needsGlucoseWrites) {
+        HealthKitManager.sharedInstance.authorize() {
             success, error -> Void in
             
             DDLogVerbose("\(#function)")
@@ -162,8 +160,7 @@ class HealthKitConfiguration
     /// Note: This does NOT clear the current HealthKit user!
     func disableHealthKitInterface() {
         DDLogVerbose("\(#function)")
-
-        UserDefaults.standard.set(false, forKey: HealthKitSettings.InterfaceEnabledKey)
+        settings.updateBoolForKey(.interfaceEnabledKey, value: false)
         configureHealthKitInterface()
     }
     
@@ -199,18 +196,17 @@ class HealthKitConfiguration
     ///
     /// Note: separately, we may enable/disable the current interface to HealthKit.
     fileprivate func healthKitInterfaceEnabled() -> Bool {
-        return UserDefaults.standard.bool(forKey: HealthKitSettings.InterfaceEnabledKey)
+        return settings.boolForKey(.interfaceEnabledKey)
     }
     
     /// If HealthKit interface is enabled, returns associated Tidepool account id
     func healthKitUserTidepoolId() -> String? {
-        let result = UserDefaults.standard.string(forKey: HealthKitSettings.InterfaceUserIdKey)
-        return result
+        return settings.stringForKey(.interfaceUserIdKey)
+
     }
 
     /// If HealthKit interface is enabled, returns associated Tidepool account id
     func healthKitUserTidepoolUsername() -> String? {
-        let result = UserDefaults.standard.string(forKey: HealthKitSettings.InterfaceUserNameKey)
-        return result
+        return settings.stringForKey(.interfaceUserNameKey)
     }
 }
