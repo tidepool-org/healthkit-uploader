@@ -17,10 +17,6 @@ import HealthKit
 
 class HealthKitUploaderSettings {
     let defaults = UserDefaults.standard
-    
-    func intSettingForKey(_ key: String) -> Int {
-        return 0
-    }
 }
 
 class GlobalSettings: HealthKitUploaderSettings {

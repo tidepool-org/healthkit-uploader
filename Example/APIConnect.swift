@@ -61,8 +61,8 @@ class APIConnector {
         }
     }
     
-    fileprivate let kLoggedInUserIDDefaultKey = "LoggedInUserId"
-    fileprivate var _loggedInUserId: String?
+    private let kLoggedInUserIDDefaultKey = "LoggedInUserId"
+    private var _loggedInUserId: String?
     var loggedInUserId: String? {
         set(newLoggedInUserId) {
             if ( newLoggedInUserId != nil ) {
@@ -77,8 +77,8 @@ class APIConnector {
         }
     }
 
-    fileprivate let kLoggedInUserNameDefaultKey = "LoggedInUserName"
-    fileprivate var _loggedInUserName: String?
+    private let kLoggedInUserNameDefaultKey = "LoggedInUserName"
+    private var _loggedInUserName: String?
     var loggedInUserName: String? {
         set(newLoggedInUserName) {
             if ( newLoggedInUserName != nil ) {

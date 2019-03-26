@@ -20,6 +20,21 @@ public class TPUploader {
     /// Nil if not instance not configured yet...
     static var sharedInstance: TPUploader? 
     
+    //
+    // MARK: - public enums
+    //
+    public enum Mode: String {
+        case Current = "Current"
+        case HistoricalAll = "HistoricalAll"
+    }
+    
+    public enum StoppedReason {
+        case error(error: Error)
+        case background
+        case turnOffInterface
+        case noResultsFromQuery
+    }
+
     /// Configures framework
     public init(_ config: TPUploaderConfigInfo) {
         DDLogInfo("TPUploader init - version 1.0.0")
@@ -40,21 +55,7 @@ public class TPUploader {
     var config: TPUploaderConfigInfo
     var service: TPUploaderServiceAPI
     var tzTracker: TPTimeZoneTracker
-    
-    //
-    // MARK: - public enums
-    //
-    public enum Mode: String {
-        case Current = "Current"
-        case HistoricalAll = "HistoricalAll"
-    }
-    
-    public enum StoppedReason {
-        case error(error: Error)
-        case background
-        case turnOffInterface
-        case noResultsFromQuery
-    }
+    let settings = GlobalSettings.sharedInstance
 
     public func version() -> String {
         return "1.0.0-alpha"
@@ -73,6 +74,12 @@ public class TPUploader {
     public func shouldShowHealthKitUI() -> Bool {
         //DDLogVerbose("\(#function)")
         return HealthKitManager.sharedInstance.isHealthDataAvailable && config.isDSAUser()
+    }
+
+    /// Have we already requested authorization for HK uploading?
+    public func authorizationRequestedForHKUpload() -> Bool {
+        //DDLogVerbose("\(#function)")
+        return HealthKitManager.sharedInstance.authorizationRequestedForUploaderSamples()
     }
 
     /// Disables HealthKit for current user
@@ -129,4 +136,14 @@ public class TPUploader {
             DDLogVerbose("ERR: startUploading ignored, no current user!")
         }
     }
+    
+    public var hasPresentedSyncUI: Bool {
+        get {
+            return settings.boolForKey(.hasPresentedSyncUI)
+        }
+        set {
+            settings.updateBoolForKey(.hasPresentedSyncUI, value: newValue)
+        }
+    }
+
 }

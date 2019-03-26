@@ -23,15 +23,6 @@ class HealthKitUploadManager:
     static let sharedInstance = HealthKitUploadManager()
     let settings = GlobalSettings.sharedInstance
     
-    var hasPresentedSyncUI: Bool {
-        get {
-            return settings.boolForKey(.hasPresentedSyncUI)
-        }
-        set {
-            settings.updateBoolForKey(.hasPresentedSyncUI, value: newValue)
-        }
-    }
-    
     private override init() {
         DDLogVerbose("\(#function)")
 
