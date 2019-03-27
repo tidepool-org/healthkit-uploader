@@ -1,7 +1,7 @@
 Pod::Spec.new do |spec|
 
   spec.name         = "TPHealthKitUploader"
-  spec.version      = "1.0.0-alpha"
+  spec.version      = "0.9.0"
   spec.summary      = "A framework to upload Apple HealthKit items to Tidepool."
   spec.description  = <<-DESC
   Initialized with a call-back protocol to provide the framework login context, this provides an interface to 
