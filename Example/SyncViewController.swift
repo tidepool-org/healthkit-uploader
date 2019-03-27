@@ -1,10 +1,17 @@
-//
-//  ViewController.swift
-//  UploaderTester
-//
-//  Created by Larry Kenyon on 2/20/19.
-//  Copyright © 2019 Tidepool. All rights reserved.
-//
+/*
+ * Copyright (c) 2019, Tidepool Project
+ *
+ * This program is free software; you can redistribute it and/or modify it under
+ * the terms of the associated License, which is identical to the BSD 2-Clause
+ * License as published by the Open Source Initiative at opensource.org.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+ * FOR A PARTICULAR PURPOSE. See the License for more details.
+ *
+ * You should have received a copy of the License along with this program; if
+ * not, you can obtain one from Tidepool Project at tidepool.org.
+ */
 
 import UIKit
 import CocoaLumberjack
@@ -176,30 +183,11 @@ class SyncViewController: UIViewController {
         currentStateLastUploadLabel.text = " "
         currentStateLastTypeValue.text = " "
         
-        var hadSuccessfulUpload = false
-        var lastUploadTime = Date.distantPast
-        var lastType = " "
-        
-        let currentStats = hkUploader.currentUploadStats()
-        for stat in currentStats {
-            if stat.hasSuccessfullyUploaded {
-                hadSuccessfulUpload = true
-                if stat.lastSuccessfulUploadTime.compare(lastUploadTime) == .orderedDescending {
-                    lastUploadTime = stat.lastSuccessfulUploadTime
-                    lastType = stat.typeName
-                }
-                DDLogInfo("Mode: \(stat.mode.rawValue)")
-                DDLogInfo("Type: \(stat.typeName)")
-                DDLogInfo("Last successful upload time: \(stat.lastSuccessfulUploadTime)")
-                DDLogInfo("")
-            }
-        }
-        
-        currentStateLastTypeValue.text = lastType
-        if hadSuccessfulUpload {
+        let (lastType, lastUploadTime) = hkUploader.lastCurrentUploadStats()
+        currentStateLastTypeValue.text = lastType ?? " "
+        if let lastUploadTime = lastUploadTime {
             currentStateLastUploadLabel.text = lastUploadTime.timeAgoInWords(Date())
         }
-        
     }
     
     func updateHistoricalStats() {
