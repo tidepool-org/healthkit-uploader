@@ -301,6 +301,19 @@
                                                     <action selector="startHistoricalSyncButtonHandler:" destination="5Hk-Ul-Xk2" eventType="touchUpInside" id="Q8e-mo-wZw"/>
                                                 </connections>
                                             </button>
+                                            <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="roundedRect" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="z1Z-th-eYr" userLabel="Reset">
+                                                <rect key="frame" x="274" y="80" width="110" height="30"/>
+                                                <color key="backgroundColor" white="0.33333333329999998" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
+                                                <constraints>
+                                                    <constraint firstAttribute="width" relation="greaterThanOrEqual" constant="110" id="J7f-NK-7Ki"/>
+                                                </constraints>
+                                                <state key="normal" title="Reset Upload">
+                                                    <color key="titleColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
+                                                </state>
+                                                <connections>
+                                                    <action selector="resetButtonHandler:" destination="5Hk-Ul-Xk2" eventType="touchUpInside" id="QEd-2E-8IC"/>
+                                                </connections>
+                                            </button>
                                             <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="roundedRect" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="XOO-Nz-JKR" userLabel="Log out">
                                                 <rect key="frame" x="0.0" y="656" width="72" height="30"/>
                                                 <color key="backgroundColor" white="0.33333333329999998" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
@@ -510,10 +523,13 @@
                                             <constraint firstItem="SUH-75-3ar" firstAttribute="centerY" secondItem="wS2-14-ucj" secondAttribute="centerY" id="5eG-KH-Gnb"/>
                                             <constraint firstItem="0rz-Sq-06v" firstAttribute="leading" secondItem="wS2-14-ucj" secondAttribute="leading" id="5hV-xa-dYC"/>
                                             <constraint firstItem="SUH-75-3ar" firstAttribute="leading" secondItem="wS2-14-ucj" secondAttribute="trailing" constant="10" id="7so-cT-5pM"/>
+                                            <constraint firstItem="z1Z-th-eYr" firstAttribute="leading" relation="greaterThanOrEqual" secondItem="0rz-Sq-06v" secondAttribute="trailing" constant="20" id="8Q3-0O-XMF"/>
+                                            <constraint firstAttribute="trailing" secondItem="z1Z-th-eYr" secondAttribute="trailing" id="DoC-da-9Zv"/>
                                             <constraint firstItem="wS2-14-ucj" firstAttribute="leading" secondItem="xdT-nX-0aC" secondAttribute="leading" id="Gnu-9x-Jq9"/>
                                             <constraint firstAttribute="bottom" secondItem="XOO-Nz-JKR" secondAttribute="bottom" constant="8" id="KMz-kA-FVr"/>
                                             <constraint firstAttribute="trailing" secondItem="SUH-75-3ar" secondAttribute="trailing" constant="20" id="POU-e9-yjq"/>
                                             <constraint firstItem="FjE-Xs-Hys" firstAttribute="top" secondItem="0rz-Sq-06v" secondAttribute="bottom" constant="9" id="SbC-tx-0xz"/>
+                                            <constraint firstItem="z1Z-th-eYr" firstAttribute="centerY" secondItem="0rz-Sq-06v" secondAttribute="centerY" id="Tdx-VZ-NSZ"/>
                                             <constraint firstAttribute="trailing" secondItem="FjE-Xs-Hys" secondAttribute="trailing" id="UOE-Wt-mVT"/>
                                             <constraint firstAttribute="trailing" relation="greaterThanOrEqual" secondItem="XOO-Nz-JKR" secondAttribute="trailing" id="c7m-GL-KoK"/>
                                             <constraint firstItem="0rz-Sq-06v" firstAttribute="top" secondItem="wS2-14-ucj" secondAttribute="bottom" constant="26" id="dZP-0p-RuC"/>

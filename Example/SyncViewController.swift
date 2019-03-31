@@ -115,6 +115,15 @@ class SyncViewController: UIViewController {
         }
     }
     
+    @IBAction func resetButtonHandler(_ sender: Any) {
+        hkUploader.stopUploading(mode: .Current, reason: .turnOffInterface)
+        hkUploader.resetPersistentStateForMode(.Current)
+        hkUploader.stopUploading(mode: .HistoricalAll, reason: .turnOffInterface)
+        hkUploader.resetPersistentStateForMode(.HistoricalAll)
+        updateCurrentStats()
+        updateHistoricalStats()
+    }
+    
     @IBAction func logout_button_tapped(_ sender: AnyObject) {
         performSegue(withIdentifier: "segueToLogout", sender: self)
     }
