@@ -7,6 +7,18 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		4800BBD3225C344C00B1FFB2 /* HealthKitConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48397816221F6AB800A833FF /* HealthKitConfiguration.swift */; };
+		4800BBD5225CDE2200B1FFB2 /* HKSettingAnchor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4800BBD4225CDE2200B1FFB2 /* HKSettingAnchor.swift */; };
+		4800BBD6225E25BA00B1FFB2 /* TPHealthKitUploader.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 483977C4221F68D700A833FF /* TPHealthKitUploader.framework */; };
+		4800BBD7225E25BA00B1FFB2 /* TPHealthKitUploader.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 483977C4221F68D700A833FF /* TPHealthKitUploader.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		4804F7ED225C0548001242A6 /* TPUploaderGlobalStats.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4804F7EC225C0547001242A6 /* TPUploaderGlobalStats.swift */; };
+		4804F7EF225C17DA001242A6 /* HKSettingType.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4804F7EE225C17DA001242A6 /* HKSettingType.swift */; };
+		4804F7F2225C1827001242A6 /* HKSettingString.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4804F7F1225C1827001242A6 /* HKSettingString.swift */; };
+		4804F7F4225C1841001242A6 /* HKSettingDate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4804F7F3225C1841001242A6 /* HKSettingDate.swift */; };
+		4804F7F6225C184E001242A6 /* HKSettingInt.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4804F7F5225C184E001242A6 /* HKSettingInt.swift */; };
+		4804F7F8225C1867001242A6 /* HKGlobalSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4804F7F7225C1867001242A6 /* HKGlobalSettings.swift */; };
+		4804F7FA225C187A001242A6 /* HKTypeModeSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4804F7F9225C187A001242A6 /* HKTypeModeSettings.swift */; };
+		4804F7FC225C19A5001242A6 /* HKSettingBool.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4804F7FB225C19A5001242A6 /* HKSettingBool.swift */; };
 		48202D52223C10D800DEC894 /* HealthKitUploadManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4839781C221F6AB800A833FF /* HealthKitUploadManager.swift */; };
 		482128DE222F6A0D0033D982 /* NSDateExtension.swift in Sources */ = {isa = PBXBuildFile; fileRef = 482128DD222F6A0D0033D982 /* NSDateExtension.swift */; };
 		482128E1223073D90033D982 /* DebugLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 482128E0223073D90033D982 /* DebugLog.swift */; };
@@ -28,11 +40,7 @@
 		48397829221F6AB800A833FF /* HealthKitUploadType.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48397813221F6AB800A833FF /* HealthKitUploadType.swift */; };
 		4839782A221F6AB800A833FF /* HealthKitUploadTypeWorkout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48397814221F6AB800A833FF /* HealthKitUploadTypeWorkout.swift */; };
 		4839782B221F6AB800A833FF /* TPUploaderNotifications.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48397815221F6AB800A833FF /* TPUploaderNotifications.swift */; };
-		4839782C221F6AB800A833FF /* HealthKitConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48397816221F6AB800A833FF /* HealthKitConfiguration.swift */; };
 		4839782D221F6AB800A833FF /* HealthKitUploader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48397817221F6AB800A833FF /* HealthKitUploader.swift */; };
-		4839782E221F6AB800A833FF /* HealthKitUploadData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48397818221F6AB800A833FF /* HealthKitUploadData.swift */; };
-		4839782F221F6AB800A833FF /* HealthKitSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48397819221F6AB800A833FF /* HealthKitSettings.swift */; };
-		48397830221F6AB800A833FF /* HealthKitUploadStats.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4839781A221F6AB800A833FF /* HealthKitUploadStats.swift */; };
 		48397831221F6AB800A833FF /* HealthKitManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4839781B221F6AB800A833FF /* HealthKitManager.swift */; };
 		48397833221F6AB800A833FF /* HealthKitUploadReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4839781D221F6AB800A833FF /* HealthKitUploadReader.swift */; };
 		48EF2234221F768B00BD82A3 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48EF2233221F768B00BD82A3 /* AppDelegate.swift */; };
@@ -57,10 +65,33 @@
 		};
 /* End PBXContainerItemProxy section */
 
+/* Begin PBXCopyFilesBuildPhase section */
+		4800BBD8225E25BA00B1FFB2 /* Embed Frameworks */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+				4800BBD7225E25BA00B1FFB2 /* TPHealthKitUploader.framework in Embed Frameworks */,
+			);
+			name = "Embed Frameworks";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
 		03EBB1E32BE3D203B36A1E28 /* Pods_Example.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_Example.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		09728F9FC94D3539AF1A55AF /* Pods-Example.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Example.release.xcconfig"; path = "Target Support Files/Pods-Example/Pods-Example.release.xcconfig"; sourceTree = "<group>"; };
 		21A7296A14C67A53FB8E6F23 /* Pods-Example.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Example.debug.xcconfig"; path = "Target Support Files/Pods-Example/Pods-Example.debug.xcconfig"; sourceTree = "<group>"; };
+		4800BBD4225CDE2200B1FFB2 /* HKSettingAnchor.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = HKSettingAnchor.swift; sourceTree = "<group>"; };
+		4804F7EC225C0547001242A6 /* TPUploaderGlobalStats.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = TPUploaderGlobalStats.swift; sourceTree = "<group>"; };
+		4804F7EE225C17DA001242A6 /* HKSettingType.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HKSettingType.swift; sourceTree = "<group>"; };
+		4804F7F1225C1827001242A6 /* HKSettingString.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HKSettingString.swift; sourceTree = "<group>"; };
+		4804F7F3225C1841001242A6 /* HKSettingDate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HKSettingDate.swift; sourceTree = "<group>"; };
+		4804F7F5225C184E001242A6 /* HKSettingInt.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HKSettingInt.swift; sourceTree = "<group>"; };
+		4804F7F7225C1867001242A6 /* HKGlobalSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HKGlobalSettings.swift; sourceTree = "<group>"; };
+		4804F7F9225C187A001242A6 /* HKTypeModeSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HKTypeModeSettings.swift; sourceTree = "<group>"; };
+		4804F7FB225C19A5001242A6 /* HKSettingBool.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HKSettingBool.swift; sourceTree = "<group>"; };
 		482128DD222F6A0D0033D982 /* NSDateExtension.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = NSDateExtension.swift; sourceTree = "<group>"; };
 		482128E0223073D90033D982 /* DebugLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebugLog.swift; sourceTree = "<group>"; };
 		482128E3223076E60033D982 /* TPUploaderStats.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TPUploaderStats.swift; sourceTree = "<group>"; };
@@ -85,9 +116,6 @@
 		48397815221F6AB800A833FF /* TPUploaderNotifications.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = TPUploaderNotifications.swift; sourceTree = "<group>"; };
 		48397816221F6AB800A833FF /* HealthKitConfiguration.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = HealthKitConfiguration.swift; sourceTree = "<group>"; };
 		48397817221F6AB800A833FF /* HealthKitUploader.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = HealthKitUploader.swift; sourceTree = "<group>"; };
-		48397818221F6AB800A833FF /* HealthKitUploadData.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = HealthKitUploadData.swift; sourceTree = "<group>"; };
-		48397819221F6AB800A833FF /* HealthKitSettings.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = HealthKitSettings.swift; sourceTree = "<group>"; };
-		4839781A221F6AB800A833FF /* HealthKitUploadStats.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = HealthKitUploadStats.swift; sourceTree = "<group>"; };
 		4839781B221F6AB800A833FF /* HealthKitManager.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = HealthKitManager.swift; sourceTree = "<group>"; };
 		4839781C221F6AB800A833FF /* HealthKitUploadManager.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = HealthKitUploadManager.swift; sourceTree = "<group>"; };
 		4839781D221F6AB800A833FF /* HealthKitUploadReader.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = HealthKitUploadReader.swift; sourceTree = "<group>"; };
@@ -121,12 +149,28 @@
 			files = (
 				48EF224F2221EE7D00BD82A3 /* HealthKit.framework in Frameworks */,
 				7991B496AFFA0D9F0C54EB29 /* Pods_Example.framework in Frameworks */,
+				4800BBD6225E25BA00B1FFB2 /* TPHealthKitUploader.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		4804F7F0225C17E5001242A6 /* Settings */ = {
+			isa = PBXGroup;
+			children = (
+				4804F7F7225C1867001242A6 /* HKGlobalSettings.swift */,
+				4804F7F9225C187A001242A6 /* HKTypeModeSettings.swift */,
+				4804F7EE225C17DA001242A6 /* HKSettingType.swift */,
+				4804F7F1225C1827001242A6 /* HKSettingString.swift */,
+				4804F7F3225C1841001242A6 /* HKSettingDate.swift */,
+				4804F7F5225C184E001242A6 /* HKSettingInt.swift */,
+				4804F7FB225C19A5001242A6 /* HKSettingBool.swift */,
+				4800BBD4225CDE2200B1FFB2 /* HKSettingAnchor.swift */,
+			);
+			path = Settings;
+			sourceTree = "<group>";
+		};
 		482128DF223073AC0033D982 /* Service */ = {
 			isa = PBXGroup;
 			children = (
@@ -168,6 +212,7 @@
 			isa = PBXGroup;
 			children = (
 				4839780A221F6AB800A833FF /* Extensions */,
+				4804F7F0225C17E5001242A6 /* Settings */,
 				4839780E221F6AB800A833FF /* HealthKit */,
 				48397804221F6AB800A833FF /* ThirdParty */,
 				482128DF223073AC0033D982 /* Service */,
@@ -175,6 +220,7 @@
 				48397806221F6AB800A833FF /* TPUploader.swift */,
 				48397807221F6AB800A833FF /* TPUploaderConfigInfo.swift */,
 				483977C7221F68D700A833FF /* TPHealthKitUploader.h */,
+				4804F7EC225C0547001242A6 /* TPUploaderGlobalStats.swift */,
 				482128E3223076E60033D982 /* TPUploaderStats.swift */,
 				48397815221F6AB800A833FF /* TPUploaderNotifications.swift */,
 				483977C8221F68D700A833FF /* Info.plist */,
@@ -208,9 +254,6 @@
 				48397816221F6AB800A833FF /* HealthKitConfiguration.swift */,
 				4839781C221F6AB800A833FF /* HealthKitUploadManager.swift */,
 				48397817221F6AB800A833FF /* HealthKitUploader.swift */,
-				48397818221F6AB800A833FF /* HealthKitUploadData.swift */,
-				48397819221F6AB800A833FF /* HealthKitSettings.swift */,
-				4839781A221F6AB800A833FF /* HealthKitUploadStats.swift */,
 				4839781D221F6AB800A833FF /* HealthKitUploadReader.swift */,
 				4839780F221F6AB800A833FF /* Types */,
 			);
@@ -310,6 +353,7 @@
 				48EF222F221F768B00BD82A3 /* Resources */,
 				48AD39762242A98F008C8F9C /* ShellScript */,
 				DA36291F48EFCAF8C32BA836 /* [CP] Embed Pods Frameworks */,
+				4800BBD8225E25BA00B1FFB2 /* Embed Frameworks */,
 			);
 			buildRules = (
 			);
@@ -436,7 +480,6 @@
 				"${BUILT_PRODUCTS_DIR}/Alamofire/Alamofire.framework",
 				"${BUILT_PRODUCTS_DIR}/CocoaLumberjack/CocoaLumberjack.framework",
 				"${BUILT_PRODUCTS_DIR}/SwiftyJSON/SwiftyJSON.framework",
-				"${BUILT_PRODUCTS_DIR}/TPHealthKitUploader/TPHealthKitUploader.framework",
 			);
 			name = "[CP] Embed Pods Frameworks";
 			outputFileListPaths = (
@@ -445,7 +488,6 @@
 				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/Alamofire.framework",
 				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/CocoaLumberjack.framework",
 				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/SwiftyJSON.framework",
-				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/TPHealthKitUploader.framework",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -459,16 +501,20 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				4804F7ED225C0548001242A6 /* TPUploaderGlobalStats.swift in Sources */,
 				48397823221F6AB800A833FF /* UIApplicationExtension.swift in Sources */,
 				4839782B221F6AB800A833FF /* TPUploaderNotifications.swift in Sources */,
 				482128E1223073D90033D982 /* DebugLog.swift in Sources */,
 				48397824221F6AB800A833FF /* HKExtensions.swift in Sources */,
 				48397826221F6AB800A833FF /* HealthKitUploadTypeCarb.swift in Sources */,
 				482128DE222F6A0D0033D982 /* NSDateExtension.swift in Sources */,
-				48397830221F6AB800A833FF /* HealthKitUploadStats.swift in Sources */,
+				4804F7F2225C1827001242A6 /* HKSettingString.swift in Sources */,
 				48397820221F6AB800A833FF /* TPUploaderConfigInfo.swift in Sources */,
+				4804F7F8225C1867001242A6 /* HKGlobalSettings.swift in Sources */,
+				4804F7FC225C19A5001242A6 /* HKSettingBool.swift in Sources */,
 				48397822221F6AB800A833FF /* TPTimeZoneTracker.swift in Sources */,
-				4839782C221F6AB800A833FF /* HealthKitConfiguration.swift in Sources */,
+				4800BBD3225C344C00B1FFB2 /* HealthKitConfiguration.swift in Sources */,
+				4804F7FA225C187A001242A6 /* HKTypeModeSettings.swift in Sources */,
 				48397829221F6AB800A833FF /* HealthKitUploadType.swift in Sources */,
 				4839781E221F6AB800A833FF /* SwiftyJSON.swift in Sources */,
 				48397821221F6AB800A833FF /* ServiceAPI.swift in Sources */,
@@ -476,13 +522,15 @@
 				48397828221F6AB800A833FF /* HealthKitUploadTypeInsulin.swift in Sources */,
 				48397833221F6AB800A833FF /* HealthKitUploadReader.swift in Sources */,
 				4839782A221F6AB800A833FF /* HealthKitUploadTypeWorkout.swift in Sources */,
-				4839782E221F6AB800A833FF /* HealthKitUploadData.swift in Sources */,
 				4839782D221F6AB800A833FF /* HealthKitUploader.swift in Sources */,
+				4804F7EF225C17DA001242A6 /* HKSettingType.swift in Sources */,
 				48397825221F6AB800A833FF /* UIDateFormatterExtension.swift in Sources */,
 				4839781F221F6AB800A833FF /* TPUploader.swift in Sources */,
+				4804F7F6225C184E001242A6 /* HKSettingInt.swift in Sources */,
 				48397827221F6AB800A833FF /* HealthKitUploadTypeBloodGlucose.swift in Sources */,
 				48397831221F6AB800A833FF /* HealthKitManager.swift in Sources */,
-				4839782F221F6AB800A833FF /* HealthKitSettings.swift in Sources */,
+				4800BBD5225CDE2200B1FFB2 /* HKSettingAnchor.swift in Sources */,
+				4804F7F4225C1841001242A6 /* HKSettingDate.swift in Sources */,
 				48202D52223C10D800DEC894 /* HealthKitUploadManager.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -712,6 +760,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 21A7296A14C67A53FB8E6F23 /* Pods-Example.debug.xcconfig */;
 			buildSettings = {
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = Example/Example.entitlements;
 				CODE_SIGN_STYLE = Automatic;
@@ -733,6 +782,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 09728F9FC94D3539AF1A55AF /* Pods-Example.release.xcconfig */;
 			buildSettings = {
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = Example/Example.entitlements;
 				CODE_SIGN_STYLE = Automatic;

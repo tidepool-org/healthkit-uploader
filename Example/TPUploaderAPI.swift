@@ -25,8 +25,8 @@ class TPUploaderAPI: TPUploaderConfigInfo {
     class func connector() -> TPUploaderAPI {
         if _connector == nil {
             let connector = TPUploaderAPI.init()
-            connector.configure()
             _connector = connector
+            connector.configure()
         }
         return _connector!
     }

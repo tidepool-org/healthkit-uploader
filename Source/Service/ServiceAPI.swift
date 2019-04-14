@@ -136,7 +136,7 @@ public class TPUploaderServiceAPI {
                 completion(false)
                 return
             }
-            if let currentBioSex = patient["biologicalSex"].string {
+            if let currentBioSex = patient["biologicalSex"].string, currentBioSex.lowercased() != "unknown" {
                 DDLogError("biological sex '\(currentBioSex)' already set in Tidepool, should not update!")
                 completion(false)
                 return

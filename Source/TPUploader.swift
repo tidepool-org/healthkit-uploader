@@ -19,6 +19,7 @@ public class TPUploader {
     
     /// Nil if not instance not configured yet...
     static var sharedInstance: TPUploader? 
+    static var configDebugger: TPUploaderConfigInfo?
     
     //
     // MARK: - public enums
@@ -30,13 +31,14 @@ public class TPUploader {
     
     public enum StoppedReason {
         case error(error: Error)
-        case background
-        case turnOffInterface
-        case noResultsFromQuery
+        case backgroundTimeExpired
+        case interfaceTurnedOff
+        case uploadingComplete
     }
 
     /// Configures framework
     public init(_ config: TPUploaderConfigInfo) {
+        debugConfig = config // special copy to get debug output during init!
         DDLogInfo("TPUploader init - version 1.0.0")
         // TODO: fail if already configured! Should probably just have the init private, and provide access via a connector() method like other singletons that require initialization data.
         self.config = config
@@ -57,7 +59,7 @@ public class TPUploader {
     var config: TPUploaderConfigInfo
     var service: TPUploaderServiceAPI
     var tzTracker: TPTimeZoneTracker
-    let settings = GlobalSettings.sharedInstance
+    let settings = HKGlobalSettings.sharedInstance
     
     let hkUploadMgr: HealthKitUploadManager
     let hkMgr: HealthKitManager
@@ -126,10 +128,14 @@ public class TPUploader {
         return hkUploadMgr.statsForMode(TPUploader.Mode.Current)
     }
 
+    public func uploaderProgress() -> TPUploaderGlobalStats {
+        return settings.currentProgress()
+    }
+
     public func historicalUploadStats() -> [TPUploaderStats] {
         return hkUploadMgr.statsForMode(TPUploader.Mode.HistoricalAll)
     }
-    
+   
     public func lastHistoricalUploadStats() -> (current: Int?, total: Int?, type: String?, date: Date?) {
         let historicalStats = historicalUploadStats()
         var current: Int?
@@ -145,7 +151,8 @@ public class TPUploader {
                     lastUpload = stat.lastSuccessfulUploadTime
                     lastType = stat.typeName
                 } else {
-                    if lastUpload!.compare(stat.lastSuccessfulUploadTime) == .orderedAscending {
+                    
+                    if stat.lastSuccessfulUploadTime != nil, lastUpload!.compare(stat.lastSuccessfulUploadTime!) == .orderedAscending {
                         current = stat.currentDayHistorical
                         total = stat.totalDaysHistorical
                         lastUpload = stat.lastSuccessfulUploadTime
@@ -167,7 +174,7 @@ public class TPUploader {
                     lastUploadTime = stat.lastSuccessfulUploadTime
                     lastType = stat.typeName
                 } else {
-                    if stat.lastSuccessfulUploadTime.compare(lastUploadTime!) == .orderedDescending {
+                    if stat.lastSuccessfulUploadTime != nil, stat.lastSuccessfulUploadTime!.compare(lastUploadTime!) == .orderedDescending {
                         lastUploadTime = stat.lastSuccessfulUploadTime
                         lastType = stat.typeName
                     }
@@ -199,10 +206,10 @@ public class TPUploader {
     
     public var hasPresentedSyncUI: Bool {
         get {
-            return settings.boolForKey(.hasPresentedSyncUI)
+            return settings.hasPresentedSyncUI.value
         }
         set {
-            settings.updateBoolForKey(.hasPresentedSyncUI, value: newValue)
+            settings.hasPresentedSyncUI.value = newValue
         }
     }
 

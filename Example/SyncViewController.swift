@@ -37,15 +37,19 @@ class SyncViewController: UIViewController {
     @IBOutlet weak var insulinHistoricalValue: UILabel!
     @IBOutlet weak var carbsHistoricalValue: UILabel!
     @IBOutlet weak var workoutsHistoricalLabel: UILabel!
+    @IBOutlet weak var combinedHistoricalLabel: UILabel!
 
     @IBOutlet weak var bloodGlucoseTotalCnt: UILabel!
     @IBOutlet weak var insulinTotalCnt: UILabel!
     @IBOutlet weak var carbTotalCnt: UILabel!
     @IBOutlet weak var workoutTotalCnt: UILabel!
+    @IBOutlet weak var combinedTotalCnt: UILabel!
+
     
     override func viewDidLoad() {
         super.viewDidLoad()
         self.hkUploader = TPUploaderAPI.connector().uploader!
+        // reconfigure uploader in case we just logged in...
         self.hkUploader.configure()
         configureForReachability()
 
@@ -116,11 +120,8 @@ class SyncViewController: UIViewController {
     }
     
     @IBAction func resetButtonHandler(_ sender: Any) {
-        hkUploader.stopUploading(mode: .Current, reason: .turnOffInterface)
-        hkUploader.resetPersistentStateForMode(.Current)
-        hkUploader.stopUploading(mode: .HistoricalAll, reason: .turnOffInterface)
+        hkUploader.stopUploading(mode: .HistoricalAll, reason: .interfaceTurnedOff)
         hkUploader.resetPersistentStateForMode(.HistoricalAll)
-        updateCurrentStats()
         updateHistoricalStats()
     }
     
@@ -149,9 +150,9 @@ class SyncViewController: UIViewController {
                 if mode == TPUploader.Mode.HistoricalAll {
                     // Update status
                     switch reason {
-                    case .turnOffInterface:
+                    case .interfaceTurnedOff:
                         break
-                    case .noResultsFromQuery:
+                    case .uploadingComplete:
                         DDLogInfo("TODO: self.checkForComplete")
                         //self.checkForComplete()
                         break
@@ -192,15 +193,18 @@ class SyncViewController: UIViewController {
         currentStateLastUploadLabel.text = " "
         currentStateLastTypeValue.text = " "
         
-        let (lastType, lastUploadTime) = hkUploader.lastCurrentUploadStats()
+        // This shows how we can get detailed stats per type, or if we're just interested in overall stats, use the combinedStats call to get just the time of last upload if any...
+        let (lastType, _) = hkUploader.lastCurrentUploadStats()
         currentStateLastTypeValue.text = lastType ?? " "
-        if let lastUploadTime = lastUploadTime {
-            currentStateLastUploadLabel.text = lastUploadTime.timeAgoInWords(Date())
+        let progress = hkUploader.uploaderProgress()
+        if let lastSuccessfulUpload = progress.lastSuccessfulCurrentUploadTime {
+            currentStateLastUploadLabel.text = lastSuccessfulUpload.timeAgoInWords(Date())
         }
     }
     
     func updateHistoricalStats() {
         DDLogInfo("Historical stats update:")
+        var totalUploadCount = 0
         let historicInProgess = hkUploader.isUploadInProgressForMode(TPUploader.Mode.HistoricalAll)
         historicalStateValueLabel.text = historicInProgess ? "in progress" : "stopped"
         self.startHistoricalSyncButton.isEnabled = !historicInProgess
@@ -212,6 +216,7 @@ class SyncViewController: UIViewController {
                 DDLogInfo("Current day: \(stat.currentDayHistorical)")
                 DDLogInfo("Total days: \(stat.totalDaysHistorical)")
                 DDLogInfo("")
+                totalUploadCount += stat.totalUploadCount
             }
             
             if let typeLabel = historicalProgressLabels[stat.typeName] {
@@ -222,6 +227,9 @@ class SyncViewController: UIViewController {
                 totalLabel.text = "\(stat.totalUploadCount)"
             }
         }
+        let progress = hkUploader.uploaderProgress()
+        combinedHistoricalLabel.text = "\(progress.currentDayHistorical) of \(progress.totalDaysHistorical)"
+        combinedTotalCnt.text = "\(totalUploadCount)"
     }
 
 }

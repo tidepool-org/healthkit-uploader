@@ -106,8 +106,7 @@ class APIConnector {
         "Integration",
         "Production"
     ]
-    fileprivate let kDefaultServerName = "Production"
-    //fileprivate let kDefaultServerName = "Integration"
+    fileprivate let kDefaultServerName = "Staging"
 
     fileprivate var _currentService: String?
     var currentService: String? {

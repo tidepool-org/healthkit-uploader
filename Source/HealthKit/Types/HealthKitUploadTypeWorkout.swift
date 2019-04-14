@@ -25,18 +25,8 @@ class HealthKitUploadTypeWorkout: HealthKitUploadType {
         return HKSampleType.workoutType()
     }
 
-    internal override func filterSamples(sortedSamples: [HKSample]) -> [HKSample] {
-        DDLogVerbose("\(#function)")
-        // For workouts, don't filter anything out yet!
-        return sortedSamples
-    }
-    
     private var kOneWeekInSeconds: TimeInterval = 1*60*60*24*7
-    internal override func prepareDataForUpload(_ data: HealthKitUploadData) -> [[String: AnyObject]] {
-        DDLogInfo("workout prepareDataForUpload")
-        var samplesToUploadDictArray = [[String: AnyObject]]()
-        
-        for sample in data.filteredSamples {
+    override func prepareDataForUpload(_ sample: HKSample) -> [String: AnyObject]? {
             if let workout = sample as? HKWorkout {
                 var sampleToUploadDict = [String: AnyObject]()
                 sampleToUploadDict["type"] = "physicalActivity" as AnyObject?
@@ -100,11 +90,10 @@ class HealthKitUploadTypeWorkout: HealthKitUploadType {
                     addMetadata(&metadata, sampleToUploadDict: &sampleToUploadDict)
                 }
 
-                samplesToUploadDictArray.append(sampleToUploadDict)
-            }
-            
+                return(sampleToUploadDict)
+            } else {
+                return nil
         }
-        return samplesToUploadDictArray
     }
 
     // Convert HKWorkoutActivityType enum to (user string, Tidepool type string)
