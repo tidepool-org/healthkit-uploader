@@ -26,8 +26,6 @@ class HKTypeModeSettings {
     var lastSuccessfulUploadTime: HKSettingDate
     var lastSuccessfulUploadLatestSampleTime: HKSettingDate
     var lastSuccessfulUploadEarliestSampleTime: HKSettingDate
-    var totalDaysHistoricalSamples: HKSettingInt
-    var currentDayHistorical: HKSettingInt
     // other
     var queryAnchor: HKSettingAnchor
     var queryStartDate: HKSettingDate
@@ -109,11 +107,6 @@ class HKTypeModeSettings {
         //postNotifications([TPUploaderNotifications.Updated])
     }
 
-    func updateHistoricalStatsForEndState() {
-        // call when upload finishes because no more data has been found. This simply moves the current day pointer to the end...
-        self.currentDayHistorical.value = self.totalDaysHistoricalSamples.value
-    }
-
     func updateForSuccessfulUpload(lastSuccessfulUploadTime: Date) {
         DDLogVerbose("HKTypeModeSettings: (\(self.mode),  \(self.typeName))")
         
@@ -133,18 +126,8 @@ class HKTypeModeSettings {
             self.lastSuccessfulUploadLatestSampleTime.value = lastUploadAttemptLatestSampleTime
         }
         
-        if self.mode == .HistoricalAll, self.totalDaysHistoricalSamples.value > 0 {
-            if let startHistorical = self.startDateHistoricalSamples.value, let lastUploadLatestSampleTime = self.lastSuccessfulUploadLatestSampleTime.value {
-                self.currentDayHistorical.value = startHistorical.differenceInDays(lastUploadLatestSampleTime)
-            }
-        }
-        
         let message = "(\(self.mode),  \(self.typeName)) Successfully uploaded \(self.lastUploadAttemptSampleCount) samples, upload time: \(String(describing: self.lastSuccessfulUploadTime.value)), earliest sample date: \(String(describing: self.lastSuccessfulUploadEarliestSampleTime.value)), latest sample date: \(String(describing: self.lastSuccessfulUploadLatestSampleTime.value))."
         DDLogInfo(message)
-        if self.totalDaysHistoricalSamples.value > 0 {
-            DDLogInfo("Uploaded \(self.currentDayHistorical.value) of \(self.totalDaysHistoricalSamples.value) days of historical data")
-        }
-        
         postNotifications([TPUploaderNotifications.Updated, TPUploaderNotifications.UploadSuccessful])
     }
 
@@ -173,8 +156,6 @@ class HKTypeModeSettings {
         self.lastSuccessfulUploadTime = HKSettingDate(key: prefixedKey("StatsLastSuccessfulUploadTimeKey"))
         self.lastSuccessfulUploadLatestSampleTime = HKSettingDate(key: prefixedKey("StatsLastSuccessfulUploadLatestSampleTimeKey"))
         self.lastSuccessfulUploadEarliestSampleTime = HKSettingDate(key: prefixedKey("StatsLastSuccessfulUploadEarliestSampleTimeKey"))
-        self.totalDaysHistoricalSamples = HKSettingInt(key: prefixedKey("StatsTotalDaysHistoricalSamplesKey"))
-        self.currentDayHistorical = HKSettingInt(key: prefixedKey("StatsCurrentDayHistoricalKey"))
         // query settings used for anchor query of current samples; queryStartDate is only used for compatibility
         self.queryAnchor = HKSettingAnchor(key: prefixedKey("QueryAnchorKey"))
         self.queryStartDate = HKSettingDate(key: prefixedKey("QueryStartDateKey"))
@@ -187,8 +168,6 @@ class HKTypeModeSettings {
             self.lastSuccessfulUploadTime,
             self.lastSuccessfulUploadLatestSampleTime,
             self.lastSuccessfulUploadEarliestSampleTime,
-            self.totalDaysHistoricalSamples,
-            self.currentDayHistorical
         ]
         
         readerSettings = [

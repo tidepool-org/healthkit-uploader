@@ -19,17 +19,17 @@ var debugConfig: TPUploaderConfigInfo?
 
 /// Include these here to translate debug functions into protocol calls
 func DDLogInfo(_ message: @autoclosure () -> String,  file: StaticString = #file, function: StaticString = #function, line: UInt = #line) {
-    debugConfig?.logInfo(String("HKUploader[\(function):\(line)] \(message())"))
+    debugConfig?.logInfo(String("HKUploader-I[\(function):\(line)] \(message())"))
 }
 
 func DDLogDebug(_ message: @autoclosure () -> String,  file: StaticString = #file, function: StaticString = #function, line: UInt = #line) {
-    debugConfig?.logDebug(String("HKUploader[\(function):\(line)] \(message())"))
+    debugConfig?.logDebug(String("HKUploader-D[\(function):\(line)] \(message())"))
 }
 
 func DDLogError(_ message: @autoclosure () -> String,  file: StaticString = #file, function: StaticString = #function, line: UInt = #line) {
-    debugConfig?.logError(String("HKUploader[\(function):\(line)] \(message())"))
+    debugConfig?.logError(String("HKUploader-E[\(function):\(line)] \(message())"))
 }
 
 func DDLogVerbose(_ message: @autoclosure () -> String,  file: StaticString = #file, function: StaticString = #function, line: UInt = #line) {
-    debugConfig?.logVerbose(String("HKUploader[\(function):\(line)] \(message())"))
+    debugConfig?.logVerbose(String("HKUploader-V[\(function):\(line)] \(message())"))
 }

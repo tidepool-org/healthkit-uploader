@@ -233,9 +233,9 @@ private class HealthKitUploadHelper: HealthKitSampleUploaderDelegate, HealthKitU
        // get readers that still have samples...
         var readersWithSamples: [HealthKitUploadReader] = []
         for reader in readers {
+            reader.resetUploadStats()
             if reader.nextSampleDate() != nil {
                 readersWithSamples.append(reader)
-                reader.resetUploadStats()
             }
         }
         DDLogVerbose("readersWithSamples: \(readersWithSamples.count)")
@@ -333,8 +333,8 @@ private class HealthKitUploadHelper: HealthKitSampleUploaderDelegate, HealthKitU
             // No current or historical sync has happened...
             settings.currentStartDate.value = newHistoricalFence
             DDLogVerbose("new currentStartDate: \(newHistoricalFence)")
-       }
-        
+        }
+
         if settings.historicalFenceDate.value == nil {
             // No current or historical sync has happened...
             settings.historicalFenceDate.value = newHistoricalFence

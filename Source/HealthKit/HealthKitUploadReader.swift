@@ -511,7 +511,15 @@ class HealthKitUploadReader: NSObject {
         var earliestSampleDate: Date? = nil
         var latestSampleDate: Date? = nil
         
-        let predicate = HKQuery.predicateForSamples(withStart: Date.distantPast, end: Date.distantFuture, options: [])
+        let globalSettings = HKGlobalSettings.sharedInstance
+        var endDate = Date.distantFuture
+        if let fenceDate = globalSettings.currentStartDate.value {
+            endDate = fenceDate
+        } else {
+            DDLogError("Fence date should already be set!")
+        }
+
+        let predicate = HKQuery.predicateForSamples(withStart: Date.distantPast, end: endDate, options: [])
         let startDateSortDescriptor = NSSortDescriptor(key:HKSampleSortIdentifierStartDate, ascending: true)
         let endDateSortDescriptor = NSSortDescriptor(key:HKSampleSortIdentifierStartDate, ascending: false)
         
