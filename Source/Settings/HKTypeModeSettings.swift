@@ -38,8 +38,20 @@ class HKTypeModeSettings {
         var result = TPUploaderStats(typeName: typeName, mode: mode)
         result.hasSuccessfullyUploaded = self.uploadCount.value > 0
         result.lastSuccessfulUploadTime = self.lastSuccessfulUploadTime.value
-        result.totalDaysHistorical = self.totalDaysHistoricalSamples.value
-        result.currentDayHistorical = self.currentDayHistorical.value
+        
+        var totalDaysHistorical = 0
+        var currentDayHistorical = 0
+        if mode == .HistoricalAll {
+            if let earliestDay = self.startDateHistoricalSamples.value, let latestDay = self.endDateHistoricalSamples.value {
+                totalDaysHistorical = earliestDay.differenceInDays(latestDay) + 1
+                if let currentDay = lastSuccessfulUploadEarliestSampleTime.value {
+                    currentDayHistorical = currentDay.differenceInDays(latestDay) + 1
+                }
+            }
+        }
+        result.totalDaysHistorical = totalDaysHistorical
+        result.currentDayHistorical = currentDayHistorical
+        
         result.lastSuccessfulUploadEarliestSampleTime = self.lastSuccessfulUploadEarliestSampleTime.value
         result.lastSuccessfulUploadLatestSampleTime = self.lastSuccessfulUploadLatestSampleTime.value
         result.startDateHistoricalSamples = self.startDateHistoricalSamples.value
@@ -84,7 +96,7 @@ class HKTypeModeSettings {
     }
 
     func updateForUploadAttempt(sampleCount: Int, uploadAttemptTime: Date, earliestSampleTime: Date, latestSampleTime: Date) {
-        DDLogInfo("(\(self.mode),  \(self.typeName)) Attempting to upload: \(sampleCount) samples, at: \(uploadAttemptTime), with earliest sample time: \(earliestSampleTime), with latest sample time: \(latestSampleTime)")
+        DDLogInfo("(\(self.mode),  \(self.typeName)) Prepared samples for upload: \(sampleCount) samples, at: \(uploadAttemptTime), with earliest sample time: \(earliestSampleTime), with latest sample time: \(latestSampleTime)")
         
         self.lastUploadAttemptTime = uploadAttemptTime
         self.lastUploadAttemptSampleCount = sampleCount

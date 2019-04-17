@@ -15,9 +15,16 @@
 
 import HealthKit
 
+enum ReaderStoppedReason {
+    case error
+    case turnedOff
+    case withNoNewResults
+    case withResults
+}
+
 // NOTE: These delegate methods are usually called indirectly from HealthKit or a URLSession delegate, on a background queue, not on main thread
 protocol HealthKitUploadReaderDelegate: class {
-    func uploadReader(reader: HealthKitUploadReader, didReadDataForUpload error: Error?)
+    func uploadReader(reader: HealthKitUploadReader, didStop result: ReaderStoppedReason)
     func uploadReader(reader: HealthKitUploadReader, didUpdateSampleRange startDate: Date, endDate: Date)
 }
 
@@ -34,13 +41,6 @@ class HealthKitUploadReader: NSObject {
         super.init()
     }
     
-    public enum ReaderStoppedReason {
-        case error
-        case turnedOff
-        case withNoNewResults
-        case withResults
-    }
-
     weak var delegate: HealthKitUploadReaderDelegate?
     let readerSettings: HKTypeModeSettings
     var queryAnchor: HKQueryAnchor?
@@ -67,12 +67,13 @@ class HealthKitUploadReader: NSObject {
     func popNextSample() -> HKSample? {
         if let sample = sortedSamples.popLast() {
             if earliestUploadSampleTime == nil {
+                // first sample sets both dates
                 earliestUploadSampleTime = sample.startDate
                 latestUploadSampleTime = sample.startDate
             } else {
-                latestUploadSampleTime = sample.startDate
+                // for historical, we are going backwards chronologically...
+                earliestUploadSampleTime = sample.startDate
             }
-            uploadSampleCount += 1
             return sample
         }
         return nil
@@ -83,7 +84,11 @@ class HealthKitUploadReader: NSObject {
     }
 
     func sampleToUploadDict(_ sample: HKSample) -> [String: AnyObject]? {
-        return uploadType.prepareDataForUpload(sample)
+        let sampleToDict = uploadType.prepareDataForUpload(sample)
+        if sampleToDict != nil {
+            uploadSampleCount += 1
+        }
+        return sampleToDict
     }
     
     func resetUploadStats() {
@@ -243,6 +248,10 @@ class HealthKitUploadReader: NSObject {
         }
         self.stoppedReason = reason
         self.isReading = false
+        // always notify delegate when stopping, except when interface has been turned off (external call)
+        if reason != .turnedOff {
+            self.delegate?.uploadReader(reader: self, didStop: reason)
+        }
     }
     
     private func readMoreCurrent() {
@@ -286,6 +295,7 @@ class HealthKitUploadReader: NSObject {
         let globalSettings = HKGlobalSettings.sharedInstance
         var fenceDate = globalSettings.historicalFenceDate.value
         guard fenceDate != nil else {
+            DDLogError("Err: missing historicalFenceDate!")
             self.stopReading(.withNoNewResults)
             return
         }
@@ -295,17 +305,19 @@ class HealthKitUploadReader: NSObject {
         if bufferedSamplesCount > 0 {
             if bufferedSamplesCount == kSampleReadLimit {
                 // last upload didn't take any of our samples, so no need to read more...
+                // always let our delegate know we've finished with the latest read, error or not!
                 self.stopReading(.withResults)
                 return
             }
-            // we have buffered samples, so the read fence for this read should be at the last sample we read
+            // we have buffered samples, so the read fence for this read should be just before the last sample we read
             let earliestSampleRead = sortedSamples[0]
-            fenceDate = earliestSampleRead.startDate
+            fenceDate = earliestSampleRead.startDate.addingTimeInterval(-1.0)
         }
         
         if let lastReadCount = self.lastHistoricalReadCount {
             if lastReadCount < kSampleReadLimit {
                 // our last read returned less than the limit, so we fetched all the data...
+                
                 self.stopReading(.withNoNewResults)
                 return
             }
@@ -349,87 +361,87 @@ class HealthKitUploadReader: NSObject {
     
     // NOTE: This is a HealthKit results handler, not called on main thread
     private func currentReadResultsHandler(_ error: NSError?, newSamples: [HKSample]?, deletedSamples: [HKDeletedObject]?, newAnchor: HKQueryAnchor?) {
-        var debugStr = ""
-        if let newSamples = newSamples {
-            debugStr = "newSamples: \(newSamples.count)"
-        }
-        if let deletedSamples = deletedSamples {
-            debugStr += " deletedSamples: \(deletedSamples.count)"
-        }
-        DDLogVerbose("(\(uploadType.typeName), \(mode.rawValue)) \(debugStr)")
-        if error != nil {
-            DDLogError("Error: \(String(describing: error!))")
-        }
-
-        guard self.isReading else {
-            DDLogInfo("Not currently reading, ignoring")
-            return
-        }
-        
-        guard let _ = self.currentUserId else {
-            DDLogInfo("No logged in user, unable to upload")
-            return
-        }
-        
-        var stoppedReason: ReaderStoppedReason = .withResults
-        if error == nil {
-            // update our anchor after a successful read. It will be persisted after all samples have been uploaded...
-            self.queryAnchor = newAnchor
-            self.handleNewSamples(newSamples, deletedSamples: deletedSamples)
-            if !self.newOrDeletedSamplesWereDelivered {
-                DDLogVerbose("stop due to no results!")
-                stoppedReason = .withNoNewResults
+        DispatchQueue.main.async {
+            
+            var debugStr = ""
+            if let newSamples = newSamples {
+                debugStr = "newSamples: \(newSamples.count)"
             }
-        } else {
-            stoppedReason = .error
-            DDLogError("(\(uploadType.typeName), mode: \(mode.rawValue)) Error reading most recent samples: \(String(describing: error))")
+            if let deletedSamples = deletedSamples {
+                debugStr += " deletedSamples: \(deletedSamples.count)"
+            }
+            DDLogVerbose("(\(self.uploadType.typeName), \(self.mode.rawValue)) \(debugStr)")
+            if error != nil {
+                DDLogError("Error: \(String(describing: error!))")
+            }
+            
+            guard self.isReading else {
+                DDLogInfo("Not currently reading, ignoring")
+                return
+            }
+            
+            guard let _ = self.currentUserId else {
+                DDLogInfo("No logged in user, unable to upload")
+                return
+            }
+            
+            var stoppedReason: ReaderStoppedReason = .withResults
+            if error == nil {
+                // update our anchor after a successful read. It will be persisted after all samples have been uploaded...
+                self.queryAnchor = newAnchor
+                self.handleNewSamples(newSamples, deletedSamples: deletedSamples)
+                if !self.newOrDeletedSamplesWereDelivered {
+                    DDLogVerbose("stop due to no results!")
+                    stoppedReason = .withNoNewResults
+                }
+            } else {
+                stoppedReason = .error
+                DDLogError("(\(self.uploadType.typeName), mode: \(self.mode.rawValue)) Error reading most recent samples: \(String(describing: error))")
+            }
+            // enter appropriate stopped state
+            self.stopReading(stoppedReason)
         }
-        // enter appropriate stopped state
-        self.stopReading(stoppedReason)
-
-        // always let our delegate know we've finished with the latest read, error or not!
-        self.delegate?.uploadReader(reader: self, didReadDataForUpload: error)
     }
     
     // NOTE: This is a HealthKit results handler, not called on main thread
     private var lastHistoricalReadCount: Int?
     private func historicalReadResultsHandler(_ error: NSError?, newSamples: [HKSample]?) {
-        var debugStr = ""
-        if let newSamples = newSamples {
-            debugStr = "newSamples: \(newSamples.count)"
-        }
-        DDLogVerbose("(\(uploadType.typeName), \(mode.rawValue)) \(debugStr)")
-        if error != nil {
-            DDLogError("Error: \(String(describing: error!))")
-        }
         
-        guard self.isReading else {
-            DDLogInfo("Not currently reading, ignoring")
-            return
-        }
-        
-        guard let _ = self.currentUserId else {
-            DDLogInfo("No logged in user, unable to upload")
-            return
-        }
-        
-        var stoppedReason: ReaderStoppedReason = .withResults
-        if error == nil {
-            self.lastHistoricalReadCount = newSamples?.count
-            self.handleNewSamples(newSamples, deletedSamples: nil)
-            // TODO: also consider we are complete if less than our limit of samples was delivered! This would avoid one extra query...
-            if !self.newOrDeletedSamplesWereDelivered {
-                stoppedReason = .withNoNewResults
+        DispatchQueue.main.async {
+            var debugStr = ""
+            if let newSamples = newSamples {
+                debugStr = "newSamples: \(newSamples.count)"
             }
-        } else {
-            stoppedReason = .error
-            DDLogError("(\(uploadType.typeName), mode: \(mode.rawValue)) Error reading most recent samples: \(String(describing: error))")
+            DDLogVerbose("(\(self.uploadType.typeName), \(self.mode.rawValue)) \(debugStr)")
+            if error != nil {
+                DDLogError("Error: \(String(describing: error!))")
+            }
+            
+            guard self.isReading else {
+                DDLogInfo("Not currently reading, ignoring")
+                return
+            }
+            
+            guard let _ = self.currentUserId else {
+                DDLogInfo("No logged in user, unable to upload")
+                return
+            }
+            
+            var stoppedReason: ReaderStoppedReason = .withResults
+            if error == nil {
+                self.lastHistoricalReadCount = newSamples?.count
+                self.handleNewSamples(newSamples, deletedSamples: nil)
+                // TODO: also consider we are complete if less than our limit of samples was delivered! This would avoid one extra query...
+                if !self.newOrDeletedSamplesWereDelivered {
+                    stoppedReason = .withNoNewResults
+                }
+            } else {
+                stoppedReason = .error
+                DDLogError("(\(self.uploadType.typeName), mode: \(self.mode.rawValue)) Error reading most recent samples: \(String(describing: error))")
+            }
+            // enter appropriate stopped state
+            self.stopReading(stoppedReason)
         }
-        // enter appropriate stopped state
-        self.stopReading(stoppedReason)
-        
-        // always let our delegate know we've finished with the latest read, error or not!
-        self.delegate?.uploadReader(reader: self, didReadDataForUpload: error)
     }
 
     
@@ -437,6 +449,7 @@ class HealthKitUploadReader: NSObject {
     // MARK: - Health Store reading methods
     //
     
+    /// Uses an HKAnchoredObjectQuery to get current samples starting at a fence start date and going to the far future.
     func readSamplesFromAnchorForType(_ uploadType: HealthKitUploadType, start: Date, end: Date, anchor: HKQueryAnchor?, limit: Int, resultsHandler: @escaping ((NSError?, [HKSample]?, [HKDeletedObject]?, HKQueryAnchor?) -> Void))
     {
         DDLogVerbose("HealthKitUploadReader (\(self.uploadType.typeName),\(self.mode))")
@@ -463,7 +476,7 @@ class HealthKitUploadReader: NSObject {
         hkManager.healthStore?.execute(sampleQuery)
     }
     
-    // Currently unused!
+    /// Uses an HKSampleQuery to get historical samples starting at a fence end date and working back in time.
     func readHistoricalSamplesForType(_ uploadType: HealthKitUploadType, endDate: Date, limit: Int, resultsHandler: @escaping (((NSError?, [HKSample]?) -> Void)))
     {
         DDLogInfo("HealthKitUploadReader endDate: \(endDate), limit: \(limit) (\(self.uploadType.typeName),\(self.mode))")

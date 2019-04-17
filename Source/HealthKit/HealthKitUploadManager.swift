@@ -63,7 +63,7 @@ class HealthKitUploadManager:
     func isUploadInProgressForMode(_ mode: TPUploader.Mode) -> Bool {
         let helper = mode == .Current ? currentHelper : historicalHelper
         let result = helper.isUploading
-        DDLogVerbose("returning \(result)")
+        DDLogVerbose("returning \(result) for mode \(mode)")
         return result
     }
  
@@ -479,7 +479,7 @@ private class HealthKitUploadHelper: HealthKitSampleUploaderDelegate, HealthKitU
                 }
  
                 // reset the upload buffers
-                DDLogInfo("Uploaded \(self.samplesToUpload.count) samples, \(self.samplesToDelete.count) deletes (\(self.mode))")
+                DDLogInfo("Successfully uploaded \(self.samplesToUpload.count) samples, \(self.samplesToDelete.count) deletes (\(self.mode))")
                 self.resetUploadBuffers()
 
                 // if we haven't been stopped, continue the uploading...
@@ -499,6 +499,7 @@ private class HealthKitUploadHelper: HealthKitSampleUploaderDelegate, HealthKitU
     }
     
     private func checkStartNextSampleReads() {
+        DDLogVerbose("(\(uploader.mode.rawValue))")
         var moreToRead = false
         for reader in readers {
             if reader.moreToRead() {
@@ -530,47 +531,43 @@ private class HealthKitUploadHelper: HealthKitSampleUploaderDelegate, HealthKitU
        }
     }
 
-    // NOTE: This is a query results handler called from HealthKit, not on main thread
-    func uploadReader(reader: HealthKitUploadReader, didReadDataForUpload error: Error?)
+    // NOTE: This is a query results handler called from HealthKit, but on main thread
+    func uploadReader(reader: HealthKitUploadReader, didStop result: ReaderStoppedReason)
     {
-
-        DispatchQueue.main.async {
-            DDLogVerbose("(\(reader.uploadType.typeName), \(reader.mode.rawValue)) error: \(String(describing: error)) [main thread]")
-            
-            if self.uploader.hasPendingUploadTasks() {
-                // ignore new reader samples while we are uploading... probably a result of an observer query restarting a read.
-                DDLogInfo("hasPendingUploadTasks, ignoring reader callback...")
-                return
-            }
-            
-            var currentReadsComplete = true
-            for reader in self.readers {
-                if reader.isReading {
-                    currentReadsComplete = false
-                }
-            }
-            
-            // if all readers are complete, see if we have samples or deletes to upload
-            guard currentReadsComplete else {
-                DDLogVerbose("wait for other reads to complete...")
-                return
-            }
-            
-            self.gatherUploadSamples()
-            self.gatherUploadDeletes()
-            
-            guard self.samplesToUpload.count != 0 || self.samplesToDelete.count != 0 else {
-                DDLogInfo("No samples or deletes to upload!")
-                if self.mode == .HistoricalAll {
-                    self.stopUploading(reason: .uploadingComplete)
-                }
-                // for current mode, we keep the observer query active, and leave isUploading true, though all readers will be stopped...
-                return
-            }
-            // will get called back at didCompleteUploadWithError
-            self.tryNextUpload()
-            
+        DDLogVerbose("(\(reader.uploadType.typeName), \(reader.mode.rawValue)) result: \(result)) [main thread]")
+        
+        if self.uploader.hasPendingUploadTasks() {
+            // ignore new reader samples while we are uploading... could be a result of an observer query restarting a read, or one of the readers finishing while not in the "isReading" state...
+            DDLogInfo("hasPendingUploadTasks, ignoring reader callback...")
+            return
         }
+        
+        var currentReadsComplete = true
+        for reader in self.readers {
+            if reader.isReading {
+                currentReadsComplete = false
+            }
+        }
+        
+        // if all readers are complete, see if we have samples or deletes to upload
+        guard currentReadsComplete else {
+            DDLogVerbose("wait for other reads to complete...")
+            return
+        }
+        
+        self.gatherUploadSamples()
+        self.gatherUploadDeletes()
+        
+        guard self.samplesToUpload.count != 0 || self.samplesToDelete.count != 0 else {
+            DDLogInfo("No samples or deletes to upload!")
+            if self.mode == .HistoricalAll {
+                self.stopUploading(reason: .uploadingComplete)
+            }
+            // for current mode, we keep the observer query active, and leave isUploading true, though all readers will be stopped...
+            return
+        }
+        // will get called back at didCompleteUploadWithError
+        self.tryNextUpload()
     }
     
     private func tryNextUpload() {

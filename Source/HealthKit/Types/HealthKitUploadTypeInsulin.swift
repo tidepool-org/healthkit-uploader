@@ -66,8 +66,9 @@ class HealthKitUploadTypeInsulin: HealthKitUploadType {
                         DDLogError("Skip basal insulin entry with non-positive duration: \(durationInMS)")
                         return nil
                     }
-                    if durationInMS > 86400000 {
-                        DDLogError("Skip basal insulin entry with excessive duration: \(durationInMS)")
+                    // 7 days max!
+                    if durationInMS > 604800000 {
+                        DDLogError("Skip basal insulin entry with > 7-day duration: \(durationInMS)")
                         return nil
                     }
                     sampleToUploadDict["duration"] = Int(durationInMS) as AnyObject

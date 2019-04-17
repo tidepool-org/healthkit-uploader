@@ -32,9 +32,9 @@ class HKGlobalSettings {
         var totalDaysHistorical = 0
         var currentDayHistorical = 0
         if let earliestDay = self.historicalEarliestDate.value, let latestDay = self.currentStartDate.value {
-            totalDaysHistorical = earliestDay.differenceInDays(latestDay)
+            totalDaysHistorical = earliestDay.differenceInDays(latestDay) + 1
             if let currentDay = historicalFenceDate.value {
-                currentDayHistorical = currentDay.differenceInDays(latestDay)
+                currentDayHistorical = currentDay.differenceInDays(latestDay) + 1
             }
         }
         DDLogVerbose("HKGlobalSettings lastUpload: \(String(describing: lastSuccessfulCurrentUploadTime.value)), current historical day: \(currentDayHistorical), total historical days: \(totalDaysHistorical)")
