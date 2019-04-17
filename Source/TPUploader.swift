@@ -40,7 +40,6 @@ public class TPUploader {
     public init(_ config: TPUploaderConfigInfo) {
         debugConfig = config // special copy to get debug output during init!
         DDLogInfo("TPUploader init - version 1.0.0")
-        // TODO: fail if already configured! Should probably just have the init private, and provide access via a connector() method like other singletons that require initialization data.
         self.config = config
         self.service = TPUploaderServiceAPI(config)
         // configure this last, it might use the service to send up an initial timezone...

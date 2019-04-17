@@ -44,7 +44,6 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         if api.serviceAvailable() {
             let uploadIntf = TPUploaderAPI.connector()
             uploadIntf.uploader.configure()
-            // TODO: resume uploading?
         }
 
         return true

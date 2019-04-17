@@ -15,10 +15,6 @@
 
 import Foundation
 
-// TODO:
-// - needs callback to get service token
-// - needs callback to get current user
-//
 public class TPUploaderServiceAPI {
     
     static var connector: TPUploaderServiceAPI?
@@ -31,7 +27,6 @@ public class TPUploaderServiceAPI {
     }
     
     private var config: TPUploaderConfigInfo
-    // TODO: where are these going?
     private var defaults = UserDefaults.standard
 
     /// Used for filling out a health data upload request...

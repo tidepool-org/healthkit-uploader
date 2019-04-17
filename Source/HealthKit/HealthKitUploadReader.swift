@@ -121,7 +121,6 @@ class HealthKitUploadReader: NSObject {
             let currentEndDate = readerSettings.queryEndDate.value
             readerSettings.queryEndDate.value = lastUploadSampleDate
             DDLogInfo("updated query end date from \(String(describing: currentEndDate)) to \(String(describing: lastUploadSampleDate))")
-            DDLogVerbose("TODO: verify we don't always pick up the last sample again!")
         }
     }
     
@@ -338,7 +337,7 @@ class HealthKitUploadReader: NSObject {
             (error: NSError?, startDate: Date?, endDate: Date?) in
             
             DispatchQueue.main.async {
-                DDLogVerbose("HealthKitUploadReader [Main] (\(self.uploadType.typeName),\(self.mode))")
+                DDLogVerbose("HealthKitUploadReader [Main] error: \(String(describing: error)) start: \(String(describing: startDate)) end: \(String(describing: endDate)) (\(self.uploadType.typeName),\(self.mode))")
                 if error == nil, let startDate = startDate, let endDate = endDate {
                     self.readerSettings.updateForHistoricalSampleRange(startDate: startDate, endDate: endDate)
                     self.readerSettings.startDateHistoricalSamples.value = startDate
@@ -348,12 +347,19 @@ class HealthKitUploadReader: NSObject {
                     // now we have goalposts, see if we can read.
                    self.readMoreHistorical()
                 } else {
-                    DDLogError("Failed to update historical samples date range, error: \(String(describing: error))")
+                    if let error = error {
+                        DDLogError("Failed to update historical samples date range, error: \(error)")
+                    } else {
+                        DDLogVerbose("no historical samples found !")
+                    }
+                    
                     // set start and end to current date, to mark that findSampleDateRange has been run, and show that no historical samples are available for this type.
                     let noSamplesDate = Date.distantFuture
                     self.readerSettings.updateForHistoricalSampleRange(startDate: noSamplesDate, endDate: noSamplesDate)
                     self.readerSettings.startDateHistoricalSamples.value = noSamplesDate
                     self.readerSettings.endDateHistoricalSamples.value = noSamplesDate
+                    self.stopReading(.withNoNewResults)
+                    // now we have goalposts, see if we can read.
                 }
             }
         }
@@ -431,7 +437,6 @@ class HealthKitUploadReader: NSObject {
             if error == nil {
                 self.lastHistoricalReadCount = newSamples?.count
                 self.handleNewSamples(newSamples, deletedSamples: nil)
-                // TODO: also consider we are complete if less than our limit of samples was delivered! This would avoid one extra query...
                 if !self.newOrDeletedSamplesWereDelivered {
                     stoppedReason = .withNoNewResults
                 }
@@ -515,6 +520,7 @@ class HealthKitUploadReader: NSObject {
         var endDate = Date.distantFuture
         if let fenceDate = globalSettings.currentStartDate.value {
             endDate = fenceDate
+            DDLogVerbose("search end date: \(fenceDate)")
         } else {
             DDLogError("Fence date should already be set!")
         }
@@ -527,6 +533,7 @@ class HealthKitUploadReader: NSObject {
         let startDateSampleQuery = HKSampleQuery(sampleType: sampleType, predicate: predicate, limit: 1, sortDescriptors: [startDateSortDescriptor]) {
             (query: HKSampleQuery, samples: [HKSample]?, error: Error?) -> Void in
             
+            DDLogVerbose("startDateSampleQuery: error: \(String(describing: error)) sample count: \(String(describing: samples?.count)) (\(self.uploadType.typeName),\(self.mode))")
             if error == nil && samples != nil {
                 // Get date of oldest sample
                 if samples!.count > 0 {
@@ -537,6 +544,7 @@ class HealthKitUploadReader: NSObject {
                 let endDateSampleQuery = HKSampleQuery(sampleType: sampleType, predicate: predicate, limit: 1, sortDescriptors: [endDateSortDescriptor]) {
                     (query: HKSampleQuery, samples: [HKSample]?, error: Error?) -> Void in
                     
+                    DDLogVerbose("endDateSampleQuery: error: \(String(describing: error)) sample count: \(String(describing: samples?.count)) (\(self.uploadType.typeName),\(self.mode))")
                     if error == nil && samples != nil && samples!.count > 0 {
                         latestSampleDate = samples![0].startDate
                         DDLogInfo("HealthKitUploadReader complete for \(self.uploadType.typeName): \(String(describing: earliestSampleDate))) to \(String(describing: latestSampleDate))")

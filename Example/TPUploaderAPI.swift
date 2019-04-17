@@ -69,12 +69,6 @@ class TPUploaderAPI: TPUploaderConfigInfo {
         return result
     }
 
-    func trackMetric(_ metric: String) {
-        DDLogInfo("\(#function) - TPUploaderConfigInfo protocol")
-        // should report metric to metric tracking service
-        // TODO: document any metrics tracked in uploader!
-    }
-    
     func currentUserId() -> String? {
         let result = service.loggedInUserId
         DDLogInfo("\(#function) - TPUploaderConfigInfo protocol, returning: \(result ?? "nil")")

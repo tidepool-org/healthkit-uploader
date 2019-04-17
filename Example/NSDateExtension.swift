@@ -17,7 +17,6 @@ import Foundation
 
 extension Date {
     func timeAgoInWords(_ date: Date) -> String {
-        // TODO: Localize these strings
         
         let timeAgoInSeconds = round(abs(date.timeIntervalSince(self)))
         

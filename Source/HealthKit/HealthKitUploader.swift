@@ -19,8 +19,6 @@ protocol HealthKitSampleUploaderDelegate: class {
     func sampleUploader(uploader: HealthKitUploader, didCompleteUploadWithError error: Error?)
 }
 
-// TODO: uploader - we should avoid using file based POSTs when in foreground (probably faster!? and simpler)
-
 class HealthKitUploader: NSObject, URLSessionDelegate, URLSessionTaskDelegate, URLSessionDataDelegate {
     init(_ mode: TPUploader.Mode) {
         DDLogVerbose("mode: \(mode.rawValue)")
@@ -43,7 +41,7 @@ class HealthKitUploader: NSObject, URLSessionDelegate, URLSessionTaskDelegate, U
     private var lastUploadSamplePostBody: Data?
     private var lastDeleteSamplePostBody: Data?
 
-    private var debugSkipUpload = true
+    private var debugSkipUpload = false
     // NOTE: This is called from a query results handler, not on main thread
     func startUploadSessionTasks(with samples: [[String: AnyObject]], deletes: [[String: AnyObject]]) throws {
         DDLogVerbose("mode: \(mode.rawValue)")

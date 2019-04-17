@@ -22,7 +22,7 @@ import CocoaLumberjack
 /// APIConnector is a singleton object with the main responsibility of communicating to the Tidepool service:
 /// - Given a username and password, login.
 /// - Can refresh connection.
-/// - Provides online/offline statis.
+/// - Provides online/offline status.
 class APIConnector {
     
     static var _connector: APIConnector?
@@ -202,7 +202,6 @@ class APIConnector {
     /// Logs in the user and obtains the session token for the session (stored internally)
     func login(_ username: String, password: String, completion: @escaping (Result<[String: Any?]>, Int?) -> (Void)) {
         // force sessionToken nil if not already nil!
-        // TODO: move to a logOut method!
         self.sessionToken = nil
         // Similar to email inputs in HTML5, trim the email (username) string of whitespace
         let trimmedUsername = username.trimmingCharacters(in: .whitespacesAndNewlines)

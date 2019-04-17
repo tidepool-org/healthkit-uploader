@@ -41,9 +41,11 @@ class HKTypeModeSettings {
         var currentDayHistorical = 0
         if mode == .HistoricalAll {
             if let earliestDay = self.startDateHistoricalSamples.value, let latestDay = self.endDateHistoricalSamples.value {
-                totalDaysHistorical = earliestDay.differenceInDays(latestDay) + 1
-                if let currentDay = lastSuccessfulUploadEarliestSampleTime.value {
-                    currentDayHistorical = currentDay.differenceInDays(latestDay) + 1
+                if earliestDay.compare(Date.distantFuture) != .orderedSame {
+                    totalDaysHistorical = earliestDay.differenceInDays(latestDay) + 1
+                    if let currentDay = lastSuccessfulUploadEarliestSampleTime.value {
+                        currentDayHistorical = currentDay.differenceInDays(latestDay) + 1
+                    }
                 }
             }
         }
