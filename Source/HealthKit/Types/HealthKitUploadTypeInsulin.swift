@@ -64,12 +64,16 @@ class HealthKitUploadTypeInsulin: HealthKitUploadType {
                     if durationInMS <= 0 {
                         //TODO: report as data error?
                         DDLogError("Skip basal insulin entry with non-positive duration: \(durationInMS)")
-                        return nil
+                        if !kDebugTurnOffSampleChecks {
+                            return nil
+                        }
                     }
                     // 7 days max!
                     if durationInMS > 604800000 {
                         DDLogError("Skip basal insulin entry with > 7-day duration: \(durationInMS)")
-                        return nil
+                        if !kDebugTurnOffSampleChecks {
+                            return nil
+                        }
                     }
                     sampleToUploadDict["duration"] = Int(durationInMS) as AnyObject
  
@@ -78,7 +82,9 @@ class HealthKitUploadTypeInsulin: HealthKitUploadType {
                     // service syntax check: [required; 0.0 <= rate <= 100.0 - note docs wrongly spec'ed 20.0]
                     if rate < 0.0 || rate > 100.0 {
                         DDLogError("Skip basal insulin entry with out-of-range rate: \(rate)")
-                        return nil
+                        if !kDebugTurnOffSampleChecks {
+                            return nil
+                        }
                     }
                     sampleToUploadDict["rate"] = rate as AnyObject
                     DDLogInfo("insulin basal value = \(String(describing: value))")
@@ -103,7 +109,9 @@ class HealthKitUploadTypeInsulin: HealthKitUploadType {
                     // service syntax check: [required; 0.0 <= normal <= 100.0]
                     if value < 0.0 || value > 100.0 {
                         DDLogError("Skip bolus insulin entry with out-of-range normal: \(value)")
-                        return nil
+                        if !kDebugTurnOffSampleChecks {
+                            return nil
+                        }
                     }
                     sampleToUploadDict["type"] = "bolus" as AnyObject?
                     sampleToUploadDict["subType"] = "normal" as AnyObject?

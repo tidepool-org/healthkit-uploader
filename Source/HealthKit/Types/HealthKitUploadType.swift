@@ -16,6 +16,9 @@
 import Foundation
 import HealthKit
 
+// NOTE: should be false when checked in!!!
+let kDebugTurnOffSampleChecks = false
+
 class HealthKitUploadType {
     private(set) var typeName: String
     

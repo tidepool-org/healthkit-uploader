@@ -2,6 +2,9 @@
 <Workspace
    version = "1.0">
    <FileRef
+      location = "group:/Users/kenyon/Code/Tidepool/healthkit-uploader/HKUploaderPlay.playground">
+   </FileRef>
+   <FileRef
       location = "group:TPHealthKitUploader.xcodeproj">
    </FileRef>
    <FileRef

@@ -114,7 +114,9 @@ class HealthKitUploadTypeBloodGlucose: HealthKitUploadType {
                 if value < 0 || value > 1000 {
                     //TODO: log this some more obvious way?
                     DDLogError("Blood glucose sample with out-of-range value: \(value)")
-                    return nil
+                    if !kDebugTurnOffSampleChecks {
+                        return nil
+                    }
                 }
                 
                 // Add out-of-range annotation if needed, and adjust value, but only for Dexcom samples...

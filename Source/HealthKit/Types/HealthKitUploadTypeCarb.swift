@@ -41,7 +41,7 @@ class HealthKitUploadTypeCarb: HealthKitUploadType {
             let value = quantitySample.quantity.doubleValue(for: unit)
             DDLogInfo("carb value: \(String(describing: value))")
             // service syntax check for carb net in optional nutrition field: [float64; required; 0.0 <= x <= 1000.0]
-            if value >= CarbohydrateNetGramsMinimum && value <= CarbohydrateNetGramsMaximum {
+            if kDebugTurnOffSampleChecks || (value >= CarbohydrateNetGramsMinimum && value <= CarbohydrateNetGramsMaximum) {
                 var nutrition = [String: AnyObject]()
                 let carbs = [
                     "net": value,

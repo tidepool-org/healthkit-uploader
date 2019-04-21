@@ -435,14 +435,34 @@ private class HealthKitUploadHelper: HealthKitSampleUploaderDelegate, HealthKitU
     //
     
     // NOTE: This is usually called on a background queue, not on main thread
-    func sampleUploader(uploader: HealthKitUploader, didCompleteUploadWithError error: Error?) {
+    func sampleUploader(uploader: HealthKitUploader, didCompleteUploadWithError error: Error?, rejectedSamples: [Int]?) {
         DDLogVerbose("(\(uploader.mode.rawValue))")
         
         DispatchQueue.main.async {
             DDLogInfo("didCompleteUploadWithError on main thread")
             
-            // TODO: for upload errors, look at fixing & retrying, or stopping upload process until conditions are more favorable...
+            // TODO: for upload errors, look at stopping upload process until conditions are more favorable...
             if let error = error as NSError? {
+                // If the service didn't like certain upload samples, remove them and retry...
+                if let rejectedSamples = rejectedSamples {
+                    DDLogError("Service rejected \(rejectedSamples.count) samples!")
+                    if rejectedSamples.count > 0 {
+                        let remainingSamples = self.samplesToUpload
+                            .enumerated()
+                            .filter {!rejectedSamples.contains($0.offset)}
+                            .map{ $0.element}
+                        let originalCount = self.samplesToUpload.count
+                        let remainingCount = remainingSamples.count
+                        let rejectedCount = rejectedSamples.count
+                        DDLogVerbose("original count: \(originalCount), remaining count: \(remainingCount), rejected counted: \(rejectedCount)")
+                        if originalCount - remainingCount == rejectedCount {
+                            self.samplesToUpload = remainingSamples
+                            self.samplesToDelete = [[String: AnyObject]]()
+                            self.tryNextUpload()
+                            return
+                        }
+                    }
+                }
                 if error.domain == NSURLErrorDomain && error.code == NSURLErrorCancelled {
                     let message = "Upload task cancelled. (\(uploader.mode))"
                     DDLogError(message)
@@ -450,51 +470,57 @@ private class HealthKitUploadHelper: HealthKitSampleUploaderDelegate, HealthKitU
                     let message = "Upload batch failed, stop reading. (\(uploader.mode)). Error: \(String(describing: error))"
                     DDLogError(message)
                 }
+                // stop uploading on non-recoverable errors for now...
+                self.stopUploading(reason: .error(error: error))
+                return
+            }
+            
+            // success!
+            
+            DDLogInfo("Upload session succeeded! (\(uploader.mode))")
+            
+            // save overall progress...
+            let uploadTime = Date()
+            if self.mode == .Current {
+                self.settings.lastSuccessfulCurrentUploadTime.value = uploadTime
             } else {
-                DDLogInfo("Upload session succeeded! (\(uploader.mode))")
-                
-                // save overall progress...
-                let uploadTime = Date()
-                if self.mode == .Current {
-                    self.settings.lastSuccessfulCurrentUploadTime.value = uploadTime
+                // for historical reads, move the end date fence to show progress
+                if let earliestUploadDate = self.firstSampleDate {
+                    // move to 1 second earlier tha last uploaded sample date, to avoid picking up that same sample in a loop!
+                    let newFenceDate = earliestUploadDate.addingTimeInterval(-1.0)
+                    DDLogVerbose("moved historical fence to \(earliestUploadDate) from \(String(describing: self.settings.historicalFenceDate.value))")
+                    self.settings.historicalFenceDate.value = newFenceDate
                 } else {
-                    // for historical reads, move the end date fence to show progress
-                    if let earliestUploadDate = self.firstSampleDate {
-                        // move to 1 second earlier tha last uploaded sample date, to avoid picking up that same sample in a loop!
-                        let newFenceDate = earliestUploadDate.addingTimeInterval(-1.0)
-                        DDLogVerbose("moved historical fence to \(earliestUploadDate) from \(String(describing: self.settings.historicalFenceDate.value))")
-                        self.settings.historicalFenceDate.value = newFenceDate
+                    if self.samplesToUpload.count == 0 {
+                        DDLogVerbose("historical fence not moved - no samples uploaded!")
                     } else {
-                        if self.samplesToUpload.count == 0 {
-                            DDLogVerbose("historical fence not moved - no samples uploaded!")
-                        } else {
-                            DDLogError("ERR: expected move of historical fence!")
-                        }
+                        DDLogError("ERR: expected move of historical fence!")
                     }
                 }
-                
-                // let readers persist any progress anchors
-                for reader in self.readers {
-                    reader.updateForSuccessfulUpload(uploadTime)
-                }
- 
-                // reset the upload buffers
-                DDLogInfo("Successfully uploaded \(self.samplesToUpload.count) samples, \(self.samplesToDelete.count) deletes (\(self.mode))")
-                self.resetUploadBuffers()
-
-                // if we haven't been stopped, continue the uploading...
-                guard self.isUploading else {
-                    DDLogInfo("stopping upload...")
-                    return
-                }
-                // Check if more deletes to do, and upload those...
-                self.gatherUploadDeletes()
-                if self.samplesToDelete.count > 0 {
-                    _ = self.tryNextUpload()
-                } else {
-                    self.checkStartNextSampleReads()
-                }
             }
+            
+            // let readers persist any progress anchors
+            for reader in self.readers {
+                reader.updateForSuccessfulUpload(uploadTime)
+            }
+            
+            // reset the upload buffers
+            DDLogInfo("Successfully uploaded \(self.samplesToUpload.count) samples, \(self.samplesToDelete.count) deletes (\(self.mode))")
+            self.resetUploadBuffers()
+            
+            // if we haven't been stopped, continue the uploading...
+            guard self.isUploading else {
+                DDLogInfo("stopping upload...")
+                return
+            }
+            // Check if more deletes to do, and upload those...
+            self.gatherUploadDeletes()
+            if self.samplesToDelete.count > 0 {
+                _ = self.tryNextUpload()
+            } else {
+                self.checkStartNextSampleReads()
+            }
+            
         }
     }
     
@@ -574,6 +600,23 @@ private class HealthKitUploadHelper: HealthKitSampleUploaderDelegate, HealthKitU
         do {
             DDLogInfo("Start next upload for \(self.samplesToUpload.count) samples, and \(self.samplesToDelete.count) deleted samples. (\(self.mode))")
             
+            // first validate the samples...
+            var validatedSamples = [[String: AnyObject]]()
+            // Prevent serialization exceptions!
+            for sample in self.samplesToUpload {
+                //DDLogInfo("Next sample to upload: \(sample)")
+                if JSONSerialization.isValidJSONObject(sample) {
+                    validatedSamples.append(sample)
+                } else {
+                    DDLogError("Sample cannot be serialized to JSON!")
+                    DDLogError("Sample: \(sample)")
+                }
+            }
+            self.samplesToUpload = validatedSamples
+            //print("Next samples to upload: \(samplesToUploadDictArray)")
+            DDLogVerbose("Count of samples to upload: \(validatedSamples.count)")
+            DDLogInfo("Start next upload for \(self.samplesToUpload.count) samples, and \(self.samplesToDelete.count) deleted samples. (\(self.mode))")
+
             try self.uploader.startUploadSessionTasks(with: self.samplesToUpload, deletes: self.samplesToDelete)
         } catch let error {
             DDLogError("Failed to prepare upload (\(self.mode)). Error: \(String(describing: error))")

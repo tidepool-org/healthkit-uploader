@@ -98,7 +98,7 @@
                                                                 <rect key="frame" x="175" y="134" width="114" height="46"/>
                                                                 <color key="backgroundColor" white="0.0" alpha="0.0" colorSpace="calibratedWhite"/>
                                                                 <constraints>
-                                                                    <constraint firstAttribute="width" constant="114" id="SVx-Cy-uLK"/>
+                                                                    <constraint firstAttribute="width" priority="750" constant="114" id="SVx-Cy-uLK"/>
                                                                     <constraint firstAttribute="height" constant="46" id="hlJ-VA-aV1"/>
                                                                 </constraints>
                                                                 <fontDescription key="fontDescription" type="system" pointSize="18"/>

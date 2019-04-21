@@ -119,6 +119,7 @@
 		4839781B221F6AB800A833FF /* HealthKitManager.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = HealthKitManager.swift; sourceTree = "<group>"; };
 		4839781C221F6AB800A833FF /* HealthKitUploadManager.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = HealthKitUploadManager.swift; sourceTree = "<group>"; };
 		4839781D221F6AB800A833FF /* HealthKitUploadReader.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = HealthKitUploadReader.swift; sourceTree = "<group>"; };
+		48AE5AC9226BC87D0010970E /* HKUploader.playground */ = {isa = PBXFileReference; lastKnownFileType = file.playground; path = HKUploader.playground; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.swift; };
 		48EF2231221F768B00BD82A3 /* Example.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Example.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		48EF2233221F768B00BD82A3 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		48EF2235221F768B00BD82A3 /* LogInViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogInViewController.swift; sourceTree = "<group>"; };
@@ -191,6 +192,7 @@
 		483977BA221F68D700A833FF = {
 			isa = PBXGroup;
 			children = (
+				48AE5AC9226BC87D0010970E /* HKUploader.playground */,
 				483977C6221F68D700A833FF /* Source */,
 				48EF2232221F768B00BD82A3 /* Example */,
 				483977C5221F68D700A833FF /* Products */,

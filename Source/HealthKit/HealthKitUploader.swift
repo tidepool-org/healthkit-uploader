@@ -16,7 +16,7 @@
 import HealthKit
 
 protocol HealthKitSampleUploaderDelegate: class {
-    func sampleUploader(uploader: HealthKitUploader, didCompleteUploadWithError error: Error?)
+    func sampleUploader(uploader: HealthKitUploader, didCompleteUploadWithError error: Error?, rejectedSamples: [Int]?)
 }
 
 class HealthKitUploader: NSObject, URLSessionDelegate, URLSessionTaskDelegate, URLSessionDataDelegate {
@@ -48,6 +48,7 @@ class HealthKitUploader: NSObject, URLSessionDelegate, URLSessionTaskDelegate, U
         
         // Prepare POST files for upload. Fine to do this on background thread (Upload tasks from NSData are not supported in background sessions, so this has to come from a file, at least if we are in the background).
         // May be nil if no samples to upload
+        //DDLogVerbose("samples to upload: \(samples)")
         let (batchSamplesPostBodyURL, samplePostBody) = try createBodyFileForBatchSamplesUpload(samples)
         lastUploadSamplePostBody = samplePostBody
         
@@ -60,7 +61,7 @@ class HealthKitUploader: NSObject, URLSessionDelegate, URLSessionTaskDelegate, U
             DDLogInfo("(mode: \(self.mode.rawValue)) [main]")
             if self.debugSkipUpload {
                 DDLogInfo("DEBUG SKIPPING UPLOAD!")
-                self.delegate?.sampleUploader(uploader: self, didCompleteUploadWithError: nil)
+                self.delegate?.sampleUploader(uploader: self, didCompleteUploadWithError: nil, rejectedSamples: nil)
                 return
             }
             
@@ -68,7 +69,7 @@ class HealthKitUploader: NSObject, URLSessionDelegate, URLSessionTaskDelegate, U
                 let message = "Unable to start upload tasks, session does not exist, it was probably invalidated. This is unexpected"
                 let error = NSError(domain: "HealthKitUploader", code: -1, userInfo: [NSLocalizedDescriptionKey: message])
                 DDLogError(message)
-                self.delegate?.sampleUploader(uploader: self, didCompleteUploadWithError: error)
+                self.delegate?.sampleUploader(uploader: self, didCompleteUploadWithError: error, rejectedSamples: nil)
                 return
             }
 
@@ -99,10 +100,10 @@ class HealthKitUploader: NSObject, URLSessionDelegate, URLSessionTaskDelegate, U
             if message != nil {
                 let settingsError = NSError(domain: "HealthKitUploader", code: -3, userInfo: [NSLocalizedDescriptionKey: message!])
                 DDLogError(message!)
-                self.delegate?.sampleUploader(uploader: self, didCompleteUploadWithError: settingsError)
+                self.delegate?.sampleUploader(uploader: self, didCompleteUploadWithError: settingsError, rejectedSamples: nil)
             } else {
                 // No uploads or deletes found (probably due to filtered bad values)
-                self.delegate?.sampleUploader(uploader: self, didCompleteUploadWithError: nil)
+                self.delegate?.sampleUploader(uploader: self, didCompleteUploadWithError: nil, rejectedSamples: nil)
             }
         }
     }
@@ -166,12 +167,23 @@ class HealthKitUploader: NSObject, URLSessionDelegate, URLSessionTaskDelegate, U
         //UIApplication.localNotifyMessage(message)
 
         var httpError: NSError?
+        var rejectedSamples: [Int]?
         if let response = task.response as? HTTPURLResponse {
             if !(200 ... 299 ~= response.statusCode) {
                 let message = "HTTP error on upload: \(response.statusCode)"
                 var responseMessage: String?
                 if let lastData = lastData  {
                     responseMessage = String(data: lastData, encoding: .utf8)
+                    if response.statusCode == 400 {
+                        do {
+                            let json = try JSONSerialization.jsonObject(with: lastData, options: [])
+                            if let jsonDict = json as? [String: Any] {
+                                rejectedSamples = parseErrResponse(jsonDict)
+                            }
+                        } catch {
+                            DDLogError("Unable to parse response message as dictionary!")
+                        }
+                    }
                 }
                 DDLogError(message)
                 if let responseMessage = responseMessage {
@@ -196,13 +208,13 @@ class HealthKitUploader: NSObject, URLSessionDelegate, URLSessionTaskDelegate, U
         
         if let error = error {
             self.setPendingUploadsState(uploadTaskIsPending: false)
-            self.delegate?.sampleUploader(uploader: self, didCompleteUploadWithError: error)
+            self.delegate?.sampleUploader(uploader: self, didCompleteUploadWithError: error, rejectedSamples: nil)
             return
         }
         
         if httpError != nil {
             self.setPendingUploadsState(uploadTaskIsPending: false)
-            self.delegate?.sampleUploader(uploader: self, didCompleteUploadWithError: httpError)
+            self.delegate?.sampleUploader(uploader: self, didCompleteUploadWithError: httpError, rejectedSamples: rejectedSamples)
             return
         }
         
@@ -218,9 +230,61 @@ class HealthKitUploader: NSObject, URLSessionDelegate, URLSessionTaskDelegate, U
         // If we were doing uploads, and there are no deletes to start, or if we just finished deletes, then we are done!
         self.lastDeleteSamplePostBody = nil
         self.setPendingUploadsState(uploadTaskIsPending: false)
-        self.delegate?.sampleUploader(uploader: self, didCompleteUploadWithError: nil)
+        self.delegate?.sampleUploader(uploader: self, didCompleteUploadWithError: nil, rejectedSamples: nil)
     }
     
+    private func parseErrResponse(_ response: [String: Any]) -> [Int]? {
+        var messageParseError = false
+        var rejectedSamples: [Int] = []
+
+        func parseErrorDict(_ errDict: Any) {
+            guard let errDict = errDict as? [String: Any] else {
+                NSLog("Error message source field is not valid!")
+                messageParseError = true
+                return
+            }
+            guard let errStr = errDict["pointer"] as? String else {
+                NSLog("Error message source pointer missing or invalid!")
+                messageParseError = true
+                return
+            }
+            print("next error is \(errStr)")
+            guard errStr.count >= 2 else {
+                NSLog("Error message pointer string too short!")
+                messageParseError = true
+                return
+            }
+            let parser = Scanner(string: errStr)
+            parser.scanLocation = 1
+            var index: Int = -1
+            guard parser.scanInt(&index) else {
+                NSLog("Unable to find index in error message!")
+                messageParseError = true
+                return
+            }
+            print("index of next bad sample is: \(index)")
+            rejectedSamples.append(index)
+        }
+
+        if let errorArray = response["errors"] as? [[String: Any]] {
+            for errorDict in errorArray {
+                if let source = errorDict["source"] {
+                    parseErrorDict(source)
+                }
+            }
+        } else {
+            if let source = response["source"] as? [String: Any] {
+                parseErrorDict(source)
+            }
+        }
+        
+        if !messageParseError && rejectedSamples.count > 0 {
+            return rejectedSamples
+        } else {
+            return nil
+        }
+    }
+
     // Retain last upload response data for error message debugging...
     func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive data: Data) {
         DDLogVerbose("mode: \(mode.rawValue)")
@@ -288,25 +352,8 @@ class HealthKitUploader: NSObject, URLSessionDelegate, URLSessionTaskDelegate, U
     private func createBodyFileForBatchSamplesUpload(_ samplesToUploadDictArray: [[String: AnyObject]]) throws -> (URL?, Data?) {
         DDLogVerbose("mode: \(mode.rawValue)")
         
-        // Prepare upload post body
-        var validatedSamples = [[String: AnyObject]]()
-        // Prevent serialization exceptions!
-        for sample in samplesToUploadDictArray {
-            //DDLogInfo("Next sample to upload: \(sample)")
-            if JSONSerialization.isValidJSONObject(sample) {
-                validatedSamples.append(sample)
-            } else {
-                DDLogError("Sample cannot be serialized to JSON!")
-                DDLogError("Sample: \(sample)")
-            }
-        }
-        //print("Next samples to upload: \(samplesToUploadDictArray)")
-        if validatedSamples.isEmpty {
-            return (nil, nil)
-        }
-        DDLogVerbose("Count of samples to upload: \(validatedSamples.count)")
         // Note: exceptions during serialization are NSException type, and won't get caught by a Swift do/catch, so pre-validate!
-        return try self.savePostBodyForUpload(samples: validatedSamples, identifier: prefixedKey(prefix: self.mode.rawValue, type: "All", key: "uploadBatchSamples.data"))
+        return try self.savePostBodyForUpload(samples: samplesToUploadDictArray, identifier: prefixedKey(prefix: self.mode.rawValue, type: "All", key: "uploadBatchSamples.data"))
     }
 
     private func savePostBodyForUpload(samples: [[String: AnyObject]], identifier: String) throws -> (URL?, Data?) {
