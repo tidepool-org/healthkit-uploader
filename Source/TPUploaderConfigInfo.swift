@@ -27,6 +27,7 @@ public protocol TPUploaderConfigInfo {
     /// account for current user is a DSA
     func isDSAUser() -> Bool
     var currentUserName: String? { get }
+    /// biological sex is gleaned from HealthKit, and uploaded when missing in the service.
     var bioSex: String? { get set }
     
     /// logging callbacks...

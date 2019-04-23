@@ -46,6 +46,11 @@ public class TPUploaderServiceAPI {
     }
     private var _currentUploadId: String?
 
+    /// Use passed in configuration protocol object for connectivity
+    func isConnectedToNetwork() -> Bool {
+        return config.isConnectedToNetwork()
+    }
+    
     // MARK: - Profile updating with Bio-sex
     
     /// Fill in Tidepool biological sex of patient if it is missing, and we can get it from HealthKit.

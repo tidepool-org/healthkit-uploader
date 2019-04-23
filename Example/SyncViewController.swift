@@ -82,6 +82,10 @@ class SyncViewController: UIViewController {
     func configureForReachability() {
         let connected = APIConnector.connector().isConnectedToNetwork()
         networkOfflineLabel.text = connected ? "Connected to Internet" : "No Internet Connection"
+        // TODO: should this be the responsibility of the uploader instead? E.g., AlamoFire carries its own reachability code.
+        if connected {
+            hkUploader.configure()
+        }
     }
 
     override func viewDidAppear(_ animated: Bool) {
@@ -194,7 +198,7 @@ class SyncViewController: UIViewController {
         currentStateLastTypeValue.text = " "
         
         // This shows how we can get detailed stats per type, or if we're just interested in overall stats, use the combinedStats call to get just the time of last upload if any...
-        let (lastType, _) = hkUploader.lastCurrentUploadStats()
+        let lastType = self.lastCurrentUploadType()
         currentStateLastTypeValue.text = lastType ?? " "
         let progress = hkUploader.uploaderProgress()
         if let lastSuccessfulUpload = progress.lastSuccessfulCurrentUploadTime {
@@ -202,6 +206,28 @@ class SyncViewController: UIViewController {
         }
     }
     
+    private func lastCurrentUploadType() -> String? {
+        var lastUploadTime: Date?
+        var lastType: String?
+        
+        let currentStats = hkUploader.currentUploadStats()
+        for stat in currentStats {
+            if stat.hasSuccessfullyUploaded {
+                if lastType == nil || lastUploadTime == nil {
+                    lastUploadTime = stat.lastSuccessfulUploadTime
+                    lastType = stat.typeName
+                } else {
+                    if stat.lastSuccessfulUploadTime != nil, stat.lastSuccessfulUploadTime!.compare(lastUploadTime!) == .orderedDescending {
+                        lastUploadTime = stat.lastSuccessfulUploadTime
+                        lastType = stat.typeName
+                    }
+                }
+            }
+        }
+        return lastType
+    }
+    
+
     func updateHistoricalStats() {
         DDLogInfo("Historical stats update:")
         var totalUploadCount = 0

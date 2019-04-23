@@ -64,15 +64,11 @@ public class TPUploader {
     let hkMgr: HealthKitManager
     let hkConfig: HealthKitConfiguration
     
-    public func version() -> String {
-        return "1.0.0-alpha"
-    }
-    
     //
     // MARK: - public methods
     //
     
-    /// Call this whenever the current user changes, after login/logout, token refresh(?), ...
+    /// Call this whenever the current user changes, after login/logout, token refresh(?), connectivity changes, etc.
     public func configure() {
         hkConfig.configureHealthKitInterface()
     }
@@ -135,54 +131,6 @@ public class TPUploader {
         return hkUploadMgr.statsForMode(TPUploader.Mode.HistoricalAll)
     }
    
-    public func lastHistoricalUploadStats() -> (current: Int?, total: Int?, type: String?, date: Date?) {
-        let historicalStats = historicalUploadStats()
-        var current: Int?
-        var total: Int?
-        var lastUpload: Date?
-        var lastType: String?
-        for stat in historicalStats {
-            // For now just return stats for the last type uploaded...
-            if stat.hasSuccessfullyUploaded {
-                if current == nil || total == nil || lastUpload == nil {
-                    current = stat.currentDayHistorical
-                    total = stat.totalDaysHistorical
-                    lastUpload = stat.lastSuccessfulUploadTime
-                    lastType = stat.typeName
-                } else {
-                    
-                    if stat.lastSuccessfulUploadTime != nil, lastUpload!.compare(stat.lastSuccessfulUploadTime!) == .orderedAscending {
-                        current = stat.currentDayHistorical
-                        total = stat.totalDaysHistorical
-                        lastUpload = stat.lastSuccessfulUploadTime
-                    }
-                }
-            }
-        }
-        return (current: current, total: total, type: lastType, date: lastUpload)
-    }
-    
-    public func lastCurrentUploadStats() -> (lastType: String?, lastTime: Date?) {
-        var lastUploadTime: Date?
-        var lastType: String?
-        
-        let currentStats = currentUploadStats()
-        for stat in currentStats {
-            if stat.hasSuccessfullyUploaded {
-                if lastType == nil || lastUploadTime == nil {
-                    lastUploadTime = stat.lastSuccessfulUploadTime
-                    lastType = stat.typeName
-                } else {
-                    if stat.lastSuccessfulUploadTime != nil, stat.lastSuccessfulUploadTime!.compare(lastUploadTime!) == .orderedDescending {
-                        lastUploadTime = stat.lastSuccessfulUploadTime
-                        lastType = stat.typeName
-                    }
-                }
-            }
-        }
-        return (lastType: lastType, lastTime: lastUploadTime)
-    }
-    
     public func isUploadInProgressForMode(_ mode: TPUploader.Mode) -> Bool {
         return hkUploadMgr.isUploadInProgressForMode(mode)
     }
