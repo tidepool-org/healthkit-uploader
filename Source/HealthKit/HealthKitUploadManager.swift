@@ -96,11 +96,21 @@ class HealthKitUploadManager:
             return
         }
 
-        guard TPUploaderServiceAPI.connector?.currentUploadId != nil else {
+        guard let serviceAPI = TPUploaderServiceAPI.connector else {
+            DDLogError("Unable to startUploading - service is not configured!")
+            return
+        }
+
+        guard serviceAPI.currentUploadId != nil else {
             DDLogError("Unable to startUploading - no currentUploadId available!")
             return
         }
         
+        guard serviceAPI.isConnectedToNetwork() else {
+            DDLogError("Unable to startUploading - currently offline!")
+            return
+        }
+
         // assume if we have current upload going on, we want to have background task servicing...
         if mode == .Current {
             self.beginSamplesUploadBackgroundTask()
