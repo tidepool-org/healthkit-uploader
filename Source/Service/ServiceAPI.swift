@@ -474,6 +474,11 @@ public class TPUploaderServiceAPI {
         return request as URLRequest
     }
 
+    func receivedAuthErrorOnUpload() {
+        DDLogError("Authorization error on upload!")
+        self.config.authorizationErrorReceived()
+    }
+    
     // User-agent string, based on that from Alamofire, but common regardless of whether Alamofire library is used
     private func userAgentString() -> String {
         if _userAgentString == nil {

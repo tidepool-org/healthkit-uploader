@@ -58,6 +58,8 @@ class SyncViewController: UIViewController {
         notificationCenter.addObserver(self, selector: #selector(SyncViewController.handleStatsUpdatedNotification(_:)), name: Notification.Name(rawValue: TPUploaderNotifications.Updated), object: nil)
         notificationCenter.addObserver(self, selector: #selector(SyncViewController.handleTurnOffUploaderNotification(_:)), name: Notification.Name(rawValue: TPUploaderNotifications.TurnOffUploader), object: nil)
         notificationCenter.addObserver(self, selector: #selector(SyncViewController.reachabilityChanged(_:)), name: ReachabilityChangedNotification, object: nil)
+        notificationCenter.addObserver(self, selector: #selector(SyncViewController.serviceLogoutNotification(_:)), name: Notification.Name(rawValue: "serviceLoggedOut"), object: nil)
+        
         
         historicalProgressLabels["BloodGlucose"] = bloodGlucoseHistoricalValue
         historicalProgressLabels["Insulin"] = insulinHistoricalValue
@@ -72,6 +74,13 @@ class SyncViewController: UIViewController {
     private var hkUploader: TPUploader!
     private var historicalProgressLabels: [String: UILabel] = [:]
     private var sampleTotalLabels: [String: UILabel] = [:]
+
+    @objc func serviceLogoutNotification(_ note: Notification) {
+        DispatchQueue.main.async {
+            DDLogError("Logout notification received!")
+            self.logout_button_tapped(self)
+        }
+    }
 
     @objc func reachabilityChanged(_ note: Notification) {
         DispatchQueue.main.async {

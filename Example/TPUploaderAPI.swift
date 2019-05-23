@@ -63,6 +63,13 @@ class TPUploaderAPI: TPUploaderConfigInfo {
         return result
     }
     
+    // token expired? Log out to force token refresh, but should probably just do a refresh!
+    func authorizationErrorReceived() {
+        service.logout()
+        let notification = Notification(name: Notification.Name(rawValue: "serviceLoggedOut"), object: nil)
+        NotificationCenter.default.post(notification)
+    }
+    
     func baseUrlString() -> String? {
         let result = service.baseUrlString
         DDLogInfo("\(#function) - TPUploaderConfigInfo protocol, returning: \(result ?? "nil")")
