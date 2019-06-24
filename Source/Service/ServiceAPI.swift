@@ -251,9 +251,12 @@ public class TPUploaderServiceAPI {
         
         // Set our endpoint for the dataset create
         // format is: https://api.tidepool.org/v1/users/<user-id-here>/data_sets"
-        let urlExtension = "v1/users/" + userId + "/data_sets"
-        
-        let clientDict = ["name": "org.tidepool.mobile", "version": UIApplication.appVersion()]
+        let urlExtension = "/v1/users/" + userId + "/data_sets"
+        print("TPHealthKitUploaderVersionNumber: \(TPHealthKitUploaderVersionNumber)")
+        guard let frameworkVersion = Bundle(for: TPUploader.self).infoDictionary?["CFBundleShortVersionString"] as? String else {
+            fatalError()
+        }
+        let clientDict = ["name": "org.tidepool.mobile", "version": frameworkVersion]
         let deduplicatorDict = ["name": "org.tidepool.deduplicator.dataset.delete.origin"]
         let jsonObject = ["client":clientDict, "dataSetType":"continuous", "deduplicator":deduplicatorDict] as [String : Any]
         let body: Data?
