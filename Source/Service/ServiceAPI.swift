@@ -252,7 +252,7 @@ public class TPUploaderServiceAPI {
         // Set our endpoint for the dataset create
         // format is: https://api.tidepool.org/v1/users/<user-id-here>/data_sets"
         let urlExtension = "/v1/users/" + userId + "/data_sets"
-        print("TPHealthKitUploaderVersionNumber: \(TPHealthKitUploaderVersionNumber)")
+        // print("TPHealthKitUploaderVersionNumber: \(TPHealthKitUploaderVersionNumber)")
         guard let frameworkVersion = Bundle(for: TPUploader.self).infoDictionary?["CFBundleShortVersionString"] as? String else {
             fatalError()
         }
