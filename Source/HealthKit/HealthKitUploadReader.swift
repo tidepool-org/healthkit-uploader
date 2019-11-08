@@ -203,6 +203,7 @@ class HealthKitUploadReader: NSObject {
         readerSettings.startDateHistoricalSamples.value = nil
         readerSettings.endDateHistoricalSamples.value = nil
         self.lastHistoricalReadCount = nil
+        self.queryAnchor = nil
     }
 
     func startReading() {

@@ -130,7 +130,6 @@ class HealthKitConfiguration
         func configureCurrentHealthKitUser() {
             DDLogVerbose("\(#function)")
             
-            settings.interfaceEnabled.value = true
             if !self.healthKitInterfaceEnabledForCurrentUser() {
                 if self.healthKitInterfaceConfiguredForOtherUser() {
                     // Switching healthkit users, reset HealthKitUploadManager
@@ -143,6 +142,8 @@ class HealthKitConfiguration
                 settings.interfaceUserId.value = config.currentUserId()!
                 settings.interfaceUserName.value = username
             }
+            // Note: set this at the end because above will clear this value if switching current HK user!
+            settings.interfaceEnabled.value = true
         }
         
         HealthKitManager.sharedInstance.authorize() {

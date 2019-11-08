@@ -84,7 +84,7 @@ class HealthKitUploadManager:
         currentHelper.resetPersistentState()
         historicalHelper.resetPersistentState()
         if switchingHealthKitUsers {
-            settings.hasPresentedSyncUI.reset()
+            settings.resetAll()
         }
     }
     
@@ -213,6 +213,7 @@ private class HealthKitUploadHelper: HealthKitSampleUploaderDelegate, HealthKitU
     func resetPersistentState() {
         DDLogVerbose("helper resetPersistentState (\(mode.rawValue))")
         for reader in readers {
+            reader.stopObservingSamples()
             reader.resetPersistentState()
             reader.readerSettings.resetPersistentState()
         }
