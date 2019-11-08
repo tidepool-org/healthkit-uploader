@@ -105,6 +105,12 @@ class TPUploaderAPI: TPUploaderConfigInfo {
         }
     }
     
+    func onTurnOnInterface() {
+    }
+    
+    func onTurnOffInterface() {        
+    }
+
     let uploadFrameWork: StaticString = "uploader"
     func logVerbose(_ str: String) {
         DDLogVerbose(str, file: uploadFrameWork, function: uploadFrameWork)

@@ -31,8 +31,12 @@ public protocol TPUploaderConfigInfo {
     var currentUserName: String? { get }
     /// biological sex is gleaned from HealthKit, and uploaded when missing in the service.
     var bioSex: String? { get set }
-    
-    /// logging callbacks...
+  
+    /// interface callbacks
+    func onTurnOnInterface();
+    func onTurnOffInterface();
+
+    /// logging callbacks
     func logVerbose(_ str: String)
     func logError(_ str: String)
     func logInfo(_ str: String)

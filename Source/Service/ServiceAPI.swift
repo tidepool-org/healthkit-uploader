@@ -167,6 +167,9 @@ public class TPUploaderServiceAPI {
     /// Call this after fetching user profile, as part of configureHealthKitInterface, to ensure we have a dataset id for health data uploads (if so enabled).
     /// - parameter completion: Method that will be called when this async operation has completed. If successful, currentUploadId in TidepoolMobileDataController will be set; if not, it will still be nil.
     func configureUploadId(_ completion: @escaping () -> (Void)) {
+        // TODO: Propagate errors via completion. If we fail to get a data upload id (due to
+        // server error or something), we turn off the interface and current and historical uploads
+        // won't work. Need to communicate that to the user.
         if let userId = config.currentUserId() {
             // if we don't have an uploadId, first try fetching one from the server...
             if config.isDSAUser() && currentUploadId == nil {
@@ -252,7 +255,7 @@ public class TPUploaderServiceAPI {
         // Set our endpoint for the dataset create
         // format is: https://api.tidepool.org/v1/users/<user-id-here>/data_sets"
         let urlExtension = "/v1/users/" + userId + "/data_sets"
-        print("TPHealthKitUploaderVersionNumber: \(TPHealthKitUploaderVersionNumber)")
+        // print("TPHealthKitUploaderVersionNumber: \(TPHealthKitUploaderVersionNumber)")
         guard let frameworkVersion = Bundle(for: TPUploader.self).infoDictionary?["CFBundleShortVersionString"] as? String else {
             fatalError()
         }
