@@ -123,7 +123,6 @@ class HealthKitConfiguration
         
         DDLogVerbose("\(#function)")
         
-        let needsUploaderReads = true
         let username = self.config.currentUserName
         
         guard self.config.currentUserId() != nil else {
