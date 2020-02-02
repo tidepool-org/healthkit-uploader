@@ -66,8 +66,8 @@ class HealthKitUploader: NSObject, URLSessionDelegate, URLSessionTaskDelegate, U
             }
 
             guard let uploadSession = self.uploadSession else {
-                let message = "Unable to start upload tasks, session does not exist, it was probably invalidated. This is unexpected"
-                let error = NSError(domain: "HealthKitUploader", code: -1, userInfo: [NSLocalizedDescriptionKey: message])
+                let message = "Unable to start upload tasks, upload session does not exist"
+                let error = NSError(domain: TPUploader.ErrorDomain, code: TPUploader.ErrorCodes.noSession.rawValue, userInfo: [NSLocalizedDescriptionKey: message])
                 DDLogError(message)
                 self.delegate?.sampleUploader(uploader: self, didCompleteUploadWithError: error, rejectedSamples: nil)
                 return
@@ -87,7 +87,7 @@ class HealthKitUploader: NSObject, URLSessionDelegate, URLSessionTaskDelegate, U
                     uploadTask.resume()
                     return
                 } catch {
-                    message = "Failed to create upload POST Url!"
+                    message = "Failed to create upload POST url"
                 }
             }
             // Otherwise check for deletes...
@@ -98,7 +98,7 @@ class HealthKitUploader: NSObject, URLSessionDelegate, URLSessionTaskDelegate, U
 
             self.setPendingUploadsState(uploadTaskIsPending: false)
             if message != nil {
-                let settingsError = NSError(domain: "HealthKitUploader", code: -3, userInfo: [NSLocalizedDescriptionKey: message!])
+              let settingsError = NSError(domain: TPUploader.ErrorDomain, code: TPUploader.ErrorCodes.noUploadUrl.rawValue, userInfo: [NSLocalizedDescriptionKey: message!])
                 DDLogError(message!)
                 self.delegate?.sampleUploader(uploader: self, didCompleteUploadWithError: settingsError, rejectedSamples: nil)
             } else {
@@ -205,7 +205,7 @@ class HealthKitUploader: NSObject, URLSessionDelegate, URLSessionTaskDelegate, U
                         DDLogInfo("failed delete samples: ...")
                     }
                 }
-                httpError = NSError(domain: "HealthKitUploader", code: -2, userInfo: [NSLocalizedDescriptionKey: message])
+                httpError = NSError(domain: TPUploader.ErrorDomain, code: TPUploader.ErrorCodes.httpResponse.rawValue, userInfo: [NSLocalizedDescriptionKey: message])
             }
         }
 
@@ -307,6 +307,8 @@ class HealthKitUploader: NSObject, URLSessionDelegate, URLSessionTaskDelegate, U
 
     // MARK: Private
 
+    // TODO: uploader - we may need to revisit whether we use a single session for all upload requests .. we've been seeing timeouts for requests where the session might be wedged (possibly with a backend root cause?) and creating a new session when this happens, as part of retry logic, _could_ fix this
+    // TODO: uploader - reconsider whether to use background configuration even for historical uploads? Background config can cause throttling of uploads, it seems, even when app is foreground?
     private func ensureUploadSession() {
         DDLogVerbose("mode: \(mode.rawValue)")
 

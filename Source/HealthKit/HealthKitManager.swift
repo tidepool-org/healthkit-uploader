@@ -33,11 +33,10 @@ class HealthKitManager {
     let isHealthDataAvailable: Bool = {
         return HKHealthStore.isHealthDataAvailable()
     }()
-    
-    func authorizationRequestedForUploaderSamples() -> Bool {
-        return settings.authorizationRequestedForUploaderSamples.value
-    }
-    
+
+  
+    var isHealthKitAuthorized: Bool = false
+
     func authorize(completion: @escaping (_ success:Bool, _ error:NSError?) -> Void = {(_, _) in })
     {
         DDLogVerbose("\(#function)")
@@ -48,13 +47,13 @@ class HealthKitManager {
         defer {
             if authorizationError != nil {
                 DDLogError("authorization error: \(String(describing: authorizationError))")
-                
+                isHealthKitAuthorized = false
                 completion(authorizationSuccess, authorizationError)
             }
         }
         
         guard isHealthDataAvailable else {
-            authorizationError = NSError(domain: "HealthKitManager", code: -1, userInfo: [NSLocalizedDescriptionKey: "HealthKit is not available on this device"])
+          authorizationError = NSError(domain: TPUploader.ErrorDomain, code: TPUploader.ErrorCodes.noHealthKit.rawValue, userInfo: [NSLocalizedDescriptionKey: "HealthKit is not available on this device"])
             return
         }
         
@@ -65,20 +64,17 @@ class HealthKitManager {
         let biologicalSex = HKObjectType.characteristicType(forIdentifier: .biologicalSex)
         readTypes.insert(biologicalSex!)
         
-        if (isHealthDataAvailable) {
+        if isHealthDataAvailable {
             healthStore!.requestAuthorization(toShare: nil, read: readTypes) { (success, error) -> Void in
-                if success {
-                    self.settings.authorizationRequestedForUploaderSamples.value = true
-                 }
-                
                 authorizationSuccess = success
                 authorizationError = error as NSError?
                 
-                DDLogInfo("authorization success: \(authorizationSuccess), error: \(String(describing: authorizationError))")
-                
+                if success {
+                    DDLogInfo("authorization success: \(authorizationSuccess), error: \(String(describing: authorizationError))")
+                    self.isHealthKitAuthorized = true
+                }
                 completion(authorizationSuccess, authorizationError)
             }
         }
     }
-    
 }

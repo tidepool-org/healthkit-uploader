@@ -33,19 +33,26 @@ class HealthKitConfiguration
     
     /// Call this whenever the current user changes, at login/logout, token refresh(?), and upon enabling or disabling the HealthKit interface.
     func configureHealthKitInterface() {
-        DDLogVerbose("version 1")
-        
+        configureHealthKitInterface(shouldAuthorize: true)
+    }
+    private var turningOnHKInterface = false
+
+    private func configureHealthKitInterface(shouldAuthorize: Bool) {
+        DDLogVerbose("\(#function), shouldAuthorize: \(shouldAuthorize)")
+
         if !HealthKitManager.sharedInstance.isHealthDataAvailable {
             DDLogInfo("HKHealthStore data is not available")
             return
         }
-        
+
         var interfaceEnabled = true
         if config.currentUserId() != nil  {
-            interfaceEnabled = healthKitInterfaceEnabledForCurrentUser()
+            interfaceEnabled = isHealthKitInterfaceEnabledForCurrentUser()
             if !interfaceEnabled {
                 DDLogInfo("disable because not enabled for current user!")
-            }
+            } else {
+              DDLogInfo("enable because enabled for current user!")
+          }
         } else {
             interfaceEnabled = false
             DDLogInfo("disable because no current user!")
@@ -53,48 +60,65 @@ class HealthKitConfiguration
         
         if interfaceEnabled {
             DDLogInfo("enable!")
+                    
             if turningOnHKInterface {
                 DDLogError("Ignoring turn on HK interface, already in progress!")
                 return
             }
             // set flag to prevent reentrancy!
             turningOnHKInterface = true
-            TPUploaderServiceAPI.connector?.configureUploadId() {
+            DDLogInfo("Turning on HK interface")
+            config.onTurningOnInterface()
+          
+            if shouldAuthorize {
+                authorizeHealthKit()
+                if !HealthKitManager.sharedInstance.isHealthKitAuthorized {
+                  interfaceEnabled = false
+                  DDLogInfo("disable because HealthKit not authorized!")
+                }
+            }
+        }
+      
+        if interfaceEnabled {
+            TPUploaderServiceAPI.connector?.configureUploadId() { (error) in
                 // if we are still turning on the HK interface after fetch of upload id, continue!
                 if self.turningOnHKInterface {
                     if TPUploaderServiceAPI.connector?.currentUploadId != nil {
                         self.turnOnInterface()
+                    } else {
+                        // TODO: uploader - if we fail to turn on interface then do a retry up to n (configurable) times
+                        // TODO: uploader - if we fail after n times, then propagate the error
+                        self.turnOffInterface(error)
                     }
                     self.turningOnHKInterface = false
+                    DDLogInfo("No longer turning on HK interface")
                 }
             }
         } else {
             DDLogInfo("disable!")
             turningOnHKInterface = false
-            self.turnOffInterface()
+            self.turnOffInterface(nil)
         }
     }
-    // flag to prevent reentry as part of this method may finish asynchronously...
-    private var turningOnHKInterface = false
 
     /// Turn on HK interface: start/resume uploading if possible...
     private func turnOnInterface() {
-        DDLogVerbose("HealthKitConfiguration")
+        DDLogVerbose("\(#function)")
+        
+        config.onTurnOnInterface();
 
         let hkManager = HealthKitUploadManager.sharedInstance
         guard !hkManager.isUploadInProgressForMode(.Current) else {
             DDLogVerbose("uploader already on, ignoring call!")
             return
         }
-        
-        config.onTurnOnInterface();
 
         if let currentUserId = config.currentUserId() {
             // Always start uploading TPUploader.Mode.Current samples when interface is turned on
             hkManager.startUploading(mode: TPUploader.Mode.Current, currentUserId: currentUserId)
 
             // Resume uploading other samples too, if resumable
-            // TODO: uploader UI - Revisit this. Do we want even the non-current mode readers/uploads to resume automatically? Or should that be behind some explicit UI
+            // TODO: uploader - Revisit this. Do we want even the non-current mode readers/uploads to resume automatically? Or should that be behind some explicit UI
             hkManager.resumeUploadingIfResumable(currentUserId: currentUserId)
             
             // Really just a one-time check to upload biological sex if Tidepool does not have it, but we can get it from HealthKit.
@@ -104,10 +128,10 @@ class HealthKitConfiguration
         }
     }
 
-    private func turnOffInterface() {
+    private func turnOffInterface(_ error: Error?) {
         DDLogVerbose("\(#function)")
 
-        config.onTurnOffInterface();
+        config.onTurnOffInterface(error);
 
         HealthKitUploadManager.sharedInstance.stopUploading(reason: TPUploader.StoppedReason.interfaceTurnedOff)
     }
@@ -116,66 +140,82 @@ class HealthKitConfiguration
     // MARK: - Methods needed for config UI
     //    
     
-    /// Enables HealthKit for current user
+    /// Enables HealthKit for current user, and authorizes HealthKit data
     ///
-    /// Note: This sets the current tidepool user as the HealthKit user!
-    func enableHealthKitInterface() {
+    /// Note: This sets the current tidepool user as the HealthKit user, and authorizes HealthKit data
+    func enableHealthKitInterfaceAndAuthorize() {
         
         DDLogVerbose("\(#function)")
         
-        let username = self.config.currentUserName
-        
         guard self.config.currentUserId() != nil else {
-            DDLogError("No logged in user at enableHealthKitInterface!")
+            DDLogError("No logged in user at enableHealthKitInterfaceAndAuthorize!")
             return
         }
-        
-        func configureCurrentHealthKitUser() {
-            DDLogVerbose("\(#function)")
-            
-            if !self.healthKitInterfaceEnabledForCurrentUser() {
-                if self.healthKitInterfaceConfiguredForOtherUser() {
-                    // Switching healthkit users, reset HealthKitUploadManager
-                    HealthKitUploadManager.sharedInstance.resetPersistentState(switchingHealthKitUsers: true)
-                    // Also clear any persisted timezone data so an initial tz reading will be sent for this new user
-                    TPTimeZoneTracker.tracker?.clearTzCache()
-                }
-                // force refetch of upload id because it may have changed for the new user...
-                TPUploaderServiceAPI.connector?.currentUploadId = nil
-                settings.interfaceUserId.value = config.currentUserId()!
-                settings.interfaceUserName.value = username
+      
+        let username = self.config.currentUserName
+
+        if !self.isHealthKitInterfaceEnabledForCurrentUser() {
+            if self.isHealthKitInterfaceConfiguredForOtherUser() {
+                // Switching healthkit users, reset HealthKitUploadManager
+                HealthKitUploadManager.sharedInstance.resetPersistentState(switchingHealthKitUsers: true)
+                // Also clear any persisted timezone data so an initial tz reading will be sent for this new user
+                TPTimeZoneTracker.tracker?.clearTzCache()
             }
-            // Note: set this at the end because above will clear this value if switching current HK user!
-            settings.interfaceEnabled.value = true
+            // force refetch of upload id because it may have changed for the new user...
+            TPUploaderServiceAPI.connector?.currentUploadId = nil
+            settings.interfaceUserId.value = config.currentUserId()!
+            settings.interfaceUserName.value = username
         }
+        // Note: set this at the end because above will clear this value if switching current HK user!
+        settings.interfaceEnabled.value = true
+      
+        authorizeHealthKit()
+    }
+
+    /// Authorizes HealthKit for current user
+    func authorizeHealthKit() {
+        DDLogVerbose("\(#function)")
         
+        guard self.config.currentUserId() != nil else {
+            DDLogError("No logged in user at authorizeHealthKit!")
+            return
+        }
+      
+        guard self.settings.interfaceEnabled.value else {
+          DDLogError("Interface not enabled at authorizeHealthKit!")
+          return
+        }
+
         HealthKitManager.sharedInstance.authorize() {
             success, error -> Void in
             
             DDLogVerbose("\(#function)")
-            
-            DispatchQueue.main.async(execute: {
-                if (error == nil) {
-                    configureCurrentHealthKitUser()
-                    self.configureHealthKitInterface()
-                } else {
-                    DDLogError("Error authorizing health data \(String(describing: error)), \(error!.userInfo)")
-                }
-            })
+
+            if success {
+                // NOTE: This doesn't mean user gave access, just that the authorization was presented
+                DDLogError("Success authorizing health data")
+                DispatchQueue.main.async(execute: {
+                  self.configureHealthKitInterface(shouldAuthorize: false)
+                })
+            } else if error != nil {
+                DDLogError("Error authorizing health data \(String(describing: error)), \(error!.userInfo)")
+            } else {
+                DDLogError("Unknown error authorizing health data")
+            }
         }
     }
-    
+
     /// Disables HealthKit for current user
     ///
     /// Note: This does NOT clear the current HealthKit user!
     func disableHealthKitInterface() {
         DDLogVerbose("\(#function)")
         settings.interfaceEnabled.value = false
-        configureHealthKitInterface()
+        configureHealthKitInterface(shouldAuthorize: false)
     }
-    
+
     /// Returns true only if the HealthKit interface is enabled and configured for the current user
-    func healthKitInterfaceEnabledForCurrentUser() -> Bool {
+    func isHealthKitInterfaceEnabledForCurrentUser() -> Bool {
         if healthKitInterfaceEnabled() == false {
             return false
         }
@@ -186,16 +226,16 @@ class HealthKitConfiguration
         }
         return false
     }
-    
+
     /// Returns true if the HealthKit interface has been configured for a tidepool id different from the current user - ignores whether the interface is currently enabled.
-    func healthKitInterfaceConfiguredForOtherUser() -> Bool {
+    func isHealthKitInterfaceConfiguredForOtherUser() -> Bool {
         if let curHealthKitUserId = healthKitUserTidepoolId() {
             if let curId = config.currentUserId() {
                 if curId != curHealthKitUserId {
                     return true
                 }
             } else {
-                DDLogError("No logged in user at healthKitInterfaceConfiguredForOtherUser!")
+                DDLogError("No logged in user at isHealthKitInterfaceConfiguredForOtherUser!")
                 return true
             }
         }

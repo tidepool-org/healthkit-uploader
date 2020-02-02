@@ -22,8 +22,26 @@ public class TPUploader {
     static var configDebugger: TPUploaderConfigInfo?
     
     //
-    // MARK: - public enums
+    // MARK: - public enums and constants
     //
+  
+    public static let ErrorDomain = "TPUploader";
+  
+    public enum ErrorCodes: Int {
+        case noHealthKit = -1
+        case noProtectedHealthKitData = -2
+        case noNetwork = -3
+        case noBaseUrl = -4
+        case noSession = -5
+        case noSessionToken = -6
+        case noUploadId = -7
+        case noUploadUrl = -8
+        case noBody = -9
+        case noUser = -10
+        case noDSAUser = -11
+        case httpResponse = -20
+    }
+  
     public enum Mode: String {
         case Current = "Current"
         case HistoricalAll = "HistoricalAll"
@@ -86,9 +104,9 @@ public class TPUploader {
     /**
      Have we already requested authorization for HK uploading?
     */
-    public func authorizationRequestedForHKUpload() -> Bool {
-        //DDLogVerbose("\(#function)")
-        return hkMgr.authorizationRequestedForUploaderSamples()
+    public func isHealthKitAuthorized() -> Bool {
+      //DDLogVerbose("\(#function)")
+      return hkMgr.isHealthKitAuthorized
     }
 
     /**
@@ -110,25 +128,25 @@ public class TPUploader {
      
      To Do: This API should take a completion routine as the call to Healthstore is asychronous.
     */
-    public func enableHealthKitInterface() {
+    public func enableHealthKitInterfaceAndAuthorize() {
         DDLogInfo("\(#function)")
-        hkConfig.enableHealthKitInterface()
+        hkConfig.enableHealthKitInterfaceAndAuthorize()
     }
 
     /**
      Returns true only if the HealthKit interface is enabled and configured for the current user.
     */
-    public func healthKitInterfaceEnabledForCurrentUser() -> Bool {
+    public func isHealthKitInterfaceEnabledForCurrentUser() -> Bool {
         DDLogInfo("\(#function)")
-        return hkConfig.healthKitInterfaceEnabledForCurrentUser()
+        return hkConfig.isHealthKitInterfaceEnabledForCurrentUser()
     }
-    
+
     /**
      Returns true if the HealthKit interface has been configured for a tidepool id different from the current user - ignores whether the interface is currently enabled.
     */
-    public func healthKitInterfaceConfiguredForOtherUser() -> Bool {
+    public func isHealthKitInterfaceConfiguredForOtherUser() -> Bool {
         DDLogInfo("\(#function)")
-        return hkConfig.healthKitInterfaceConfiguredForOtherUser()
+        return hkConfig.isHealthKitInterfaceConfiguredForOtherUser()
     }
 
     public func curHKUserName() -> String? {

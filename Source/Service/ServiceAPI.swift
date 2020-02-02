@@ -152,7 +152,7 @@ public class TPUploaderServiceAPI {
             self.sendRequest("POST", urlExtension: urlExtension, contentType: .json, body: body) {
                 (result: SendRequestResponse) -> (Void) in
                 UIApplication.shared.isNetworkActivityIndicatorVisible = false
-                if (result.isSuccess()) {
+                if result.isSuccess() {
                     DDLogInfo("Posted updated profile successfully!")
                     completion(true)
                 } else {
@@ -166,53 +166,77 @@ public class TPUploaderServiceAPI {
     
     /// Call this after fetching user profile, as part of configureHealthKitInterface, to ensure we have a dataset id for health data uploads (if so enabled).
     /// - parameter completion: Method that will be called when this async operation has completed. If successful, currentUploadId in TidepoolMobileDataController will be set; if not, it will still be nil.
-    func configureUploadId(_ completion: @escaping () -> (Void)) {
+    func configureUploadId(_ completion: @escaping (_ error: Error?) -> (Void)) {
         // TODO: Propagate errors via completion. If we fail to get a data upload id (due to
         // server error or something), we turn off the interface and current and historical uploads
         // won't work. Need to communicate that to the user.
+        DDLogInfo("configureUploadId")
         if let userId = config.currentUserId() {
             // if we don't have an uploadId, first try fetching one from the server...
             if config.isDSAUser() && currentUploadId == nil {
+                guard let frameworkVersion = Bundle(for: TPUploader.self).infoDictionary?["CFBundleShortVersionString"] as? String else {
+                    fatalError()
+                }
+                DDLogInfo("Try to fetch existing dataset for uploader frameworkVersion: \(frameworkVersion)")
+
                 self.fetchDataset(userId) {
-                    (result: String?) -> (Void) in
+                    (result: String?, error: Error?) -> (Void) in
+
+// NOTE: Uncomment this to test
+//                    let message = "Force upload id failure"
+//                    let error = NSError(domain: TPUploader.ErrorDomain, code: TPUploader.ErrorCodes.noUploadId.rawValue, userInfo: [NSLocalizedDescriptionKey: message])
+//                    completion(error)
+//                    self.currentUploadId = nil
+//                    return
+
                     if result != nil && !result!.isEmpty {
                         DDLogInfo("Dataset fetched existing: \(result!)")
                         self.currentUploadId = result
-                        completion()
+                        completion(nil)
                         return
                     }
-                    if result == nil {
+                    if error != nil {
                         // network failure for fetchDataset, don't try creating a new one in case one already does exist...
-                        completion()
+                        DDLogInfo("Dataset fetch failed")
+                        completion(error)
                         return
                     }
-                    // Existing dataset fetch failed, try creating a new one...
-                    DDLogInfo("Dataset fetch failed, try creating new dataset!")
+                  
+                    // No existing upload id exists, try creating a new one...
+                    DDLogInfo("No upload id exists, try creating new dataset!")
                     self.createDataset(userId) {
-                        (result: String?) -> (Void) in
+                        (result: String?, error: Error?) -> (Void) in
                         if result != nil && !result!.isEmpty {
                             DDLogInfo("New dataset created: \(result!)")
                             self.currentUploadId = result!
                         } else {
                             DDLogError("Unable to fetch existing upload dataset or create a new one!")
                         }
-                        completion()
+                        completion(error)
                     }
                 }
             } else {
-                DDLogInfo("Not a DSA user or userid nil or uploadId is not nil")
-                completion()
+                if !config.isDSAUser() {
+                    let message = "Not a DSA user"
+                    let error = NSError(domain: TPUploader.ErrorDomain, code: TPUploader.ErrorCodes.noDSAUser.rawValue, userInfo: [NSLocalizedDescriptionKey: message])
+                    DDLogInfo(message)
+                    completion(error)
+                } else {
+                  completion(nil)
+                }
             }
         } else {
-            DDLogInfo("No current user or isDSAUser is nil")
-            completion()
+            let message = "Not logged in"
+            let error = NSError(domain: TPUploader.ErrorDomain, code: TPUploader.ErrorCodes.noUser.rawValue, userInfo: [NSLocalizedDescriptionKey: message])
+            DDLogInfo(message)
+            completion(error)
         }
     }
     
     /// Ask service for the existing mobile app upload id for this user, if one exists.
     /// - parameter userId: Current user id
     /// - parameter completion: Method that accepts an optional String which will be nil if the network request did not complete, an empty string if an uploadId for this user does not yet exist, and the upload id if it does exist.
-    private func fetchDataset(_ userId: String, _ completion: @escaping (String?) -> (Void)) {
+    private func fetchDataset(_ userId: String, _ completion: @escaping (String?, Error?) -> (Void)) {
         DDLogInfo("Try fetching existing dataset!")
         // Set our endpoint for the dataset fetch
         // format is: https://api.tidepool.org/v1/users/<user-id-here>/data_sets?client.name=tidepool.mobile&size=1"
@@ -221,7 +245,7 @@ public class TPUploaderServiceAPI {
         sendRequest("GET", urlExtension: urlExtension, contentType: .urlEncoded) {
             (result: SendRequestResponse) -> (Void) in
             UIApplication.shared.isNetworkActivityIndicatorVisible = false
-            if (result.isSuccess()) {
+            if result.isSuccess() {
                 let json = JSON(result.data!)
                 print("\(json)")
                 var uploadId: String?
@@ -232,16 +256,21 @@ public class TPUploaderServiceAPI {
                     DDLogInfo("Fetched existing dataset: \(uploadId!)")
                 } else {
                     // return empty string to signal network request completed ok
-                    uploadId = ""
-                    DDLogInfo("Fetch of existing dataset returned nil!")
+                    DDLogInfo("Fetch existing dataset returned nil!")
+                  uploadId = ""
                 }
-                completion(uploadId)
-                // TEST: force failure...
-                //completion("")
+                completion(uploadId, nil)
             } else {
-                DDLogError("Fetch of existing dataset failed!")
-                // return nil to signal failure
-                completion(nil)
+                var message = "Fetch existing dataset failed"
+                var error = result.error
+                if error == nil {
+                    error = NSError(domain: TPUploader.ErrorDomain, code: TPUploader.ErrorCodes.httpResponse.rawValue, userInfo: [NSLocalizedDescriptionKey: message])
+                    DDLogError(message)
+                } else {
+                  message = error!.localizedDescription
+                }
+                DDLogError(message)
+                completion(nil, error)
             }
         }
     }
@@ -249,16 +278,16 @@ public class TPUploaderServiceAPI {
     /// Ask service to create a new upload id. Should only be called after fetchDataSet returns a nil array (no existing upload id).
     /// - parameter userId: Current user id
     /// - parameter completion: Method that accepts an optional String which will be nil if the network request did not complete, an empty string if the create did not result in an uploadId, and the upload id if a new id was successfully created.
-    private func createDataset(_ userId: String, _ completion: @escaping (String?) -> (Void)) {
-        DDLogInfo("Try creating a new dataset!")
-        
-        // Set our endpoint for the dataset create
-        // format is: https://api.tidepool.org/v1/users/<user-id-here>/data_sets"
-        let urlExtension = "/v1/users/" + userId + "/data_sets"
-        // print("TPHealthKitUploaderVersionNumber: \(TPHealthKitUploaderVersionNumber)")
+    private func createDataset(_ userId: String, _ completion: @escaping (String?, Error?) -> (Void)) {
+        // TODO: uploader - Should we store the frameworkVersion along with uploadId? Should we get a new uploadId if the frameworkVersion has changed since last stored uploadId? Should the backend be storing this, so when we fetch existing one, we know whether the previous frameworkVersion is different than current so we can get new uploadId?
         guard let frameworkVersion = Bundle(for: TPUploader.self).infoDictionary?["CFBundleShortVersionString"] as? String else {
             fatalError()
         }
+        DDLogInfo("Try creating a new dataset for uploader frameworkVersion: \(frameworkVersion)")
+
+        // Set our endpoint for the dataset create
+        // format is: https://api.tidepool.org/v1/users/<user-id-here>/data_sets"
+        let urlExtension = "/v1/users/" + userId + "/data_sets"
         let clientDict = ["name": "org.tidepool.mobile", "version": frameworkVersion]
         let deduplicatorDict = ["name": "org.tidepool.deduplicator.dataset.delete.origin"]
         let jsonObject = ["client":clientDict, "dataSetType":"continuous", "deduplicator":deduplicatorDict] as [String : Any]
@@ -268,7 +297,9 @@ public class TPUploaderServiceAPI {
         } catch {
             DDLogError("Failed to create body!")
             // return nil to signal failure
-            completion(nil)
+            let message = "Failed to create POST body for createDataset"
+            let error = NSError(domain: TPUploader.ErrorDomain, code: TPUploader.ErrorCodes.noBody.rawValue, userInfo: [NSLocalizedDescriptionKey: message])
+            completion(nil, error)
             return
         }
         
@@ -276,7 +307,7 @@ public class TPUploaderServiceAPI {
         sendRequest("POST", urlExtension: urlExtension, contentType: .json, body: body) {
             (result: SendRequestResponse) -> (Void) in
             UIApplication.shared.isNetworkActivityIndicatorVisible = false
-            if (result.isSuccess()) {
+            if result.isSuccess() {
                 let json = JSON(result.data!)
                 var uploadId: String?
                 if let dataDict = json["data"].dictionary {
@@ -289,11 +320,18 @@ public class TPUploaderServiceAPI {
                     uploadId = ""
                     DDLogInfo("Create new dataset returned nil!")
                 }
-                completion(uploadId)
+                completion(uploadId, nil)
             } else {
-                // return nil to signal network request failure
-                DDLogInfo("Create new dataset failed!")
-                completion(nil)
+                var message = "Create new dataset failed"
+                var error = result.error
+                if error == nil {
+                    error = NSError(domain: TPUploader.ErrorDomain, code: TPUploader.ErrorCodes.httpResponse.rawValue, userInfo: [NSLocalizedDescriptionKey: message])
+                    DDLogError(message)
+                } else {
+                  message = error!.localizedDescription
+                }
+                DDLogError(message)
+                completion(nil, error)
             }
         }
     }
@@ -333,7 +371,7 @@ public class TPUploaderServiceAPI {
             UIApplication.shared.isNetworkActivityIndicatorVisible = true
             sendRequest("POST", urlExtension: urlExtension, contentType: .json, body: body) {
                (result: SendRequestResponse) -> (Void) in UIApplication.shared.isNetworkActivityIndicatorVisible = false
-                if (result.isSuccess()) {
+                if result.isSuccess() {
                     DDLogInfo("Timezone change upload succeeded!")
                     completion(lastTzUploaded)
                 } else {
@@ -388,10 +426,11 @@ public class TPUploaderServiceAPI {
     
     func sendRequest(_ method: String, urlExtension: String, contentType: ContentType? = nil, body: Data? = nil, completion: @escaping (_ response: SendRequestResponse) -> Void) {
         
-        if (config.isConnectedToNetwork()) {
+        if config.isConnectedToNetwork() {
             guard let baseURL = config.baseUrlString() else {
-                DDLogError("Not logged in!")
-                let error = NSError(domain: "TidepoolHKUploader service API", code: -1, userInfo: [NSLocalizedDescriptionKey: "Not logged in!"])
+                let message = "No endpoint available"
+                DDLogError(message)
+                let error = NSError(domain: TPUploader.ErrorDomain, code: TPUploader.ErrorCodes.noBaseUrl.rawValue, userInfo: [NSLocalizedDescriptionKey: message])
                 let sendResponse = SendRequestResponse(error: error)
                 completion(sendResponse)
                 return
@@ -409,7 +448,9 @@ public class TPUploaderServiceAPI {
            }
 
             guard let token = config.sessionToken() else {
-                let error = NSError(domain: "TidepoolHKUploader service API", code: -1, userInfo: [NSLocalizedDescriptionKey: "No session token exists, \(method) failed to endpoint \(urlExtension)"])
+                let message = "No session token exists"
+                DDLogError(message)
+                let error = NSError(domain: TPUploader.ErrorDomain, code: TPUploader.ErrorCodes.noSessionToken.rawValue, userInfo: [NSLocalizedDescriptionKey: message])
                 sendResponse.error = error
                 completion(sendResponse)
                 return
@@ -434,8 +475,9 @@ public class TPUploaderServiceAPI {
             }
             task.resume()
         } else {
-            DDLogError("Not connected to network")
-            let error = NSError(domain: "TidepoolHKUploader service API", code: -1, userInfo: [NSLocalizedDescriptionKey: "Not connected to network"])
+            let message = "The Internet connection appears to be offline."
+            DDLogError(message)
+            let error = NSError(domain: TPUploader.ErrorDomain, code: TPUploader.ErrorCodes.noNetwork.rawValue, userInfo: [NSLocalizedDescriptionKey: message])
             let sendResponse = SendRequestResponse(error: error)
             completion(sendResponse)
             return
@@ -454,17 +496,17 @@ public class TPUploaderServiceAPI {
         }
         
         guard config.isConnectedToNetwork() else {
-            error = NSError(domain: "APIConnect-makeDataUploadRequest", code: -1, userInfo: [NSLocalizedDescriptionKey: "Unable to upload, not connected to network"])
+            error = NSError(domain: TPUploader.ErrorDomain, code: TPUploader.ErrorCodes.noNetwork.rawValue, userInfo: [NSLocalizedDescriptionKey: "Unable to upload. The Internet connection appears to be offline."])
             throw error!
         }
         
         guard let uploadId = currentUploadId else {
-            error = NSError(domain: "APIConnect-makeDataUploadRequest", code: -2, userInfo: [NSLocalizedDescriptionKey: "Unable to upload, no upload id is available"])
+            error = NSError(domain: TPUploader.ErrorDomain, code: TPUploader.ErrorCodes.noUploadId.rawValue, userInfo: [NSLocalizedDescriptionKey: "Unable to upload. No upload id is available."])
             throw error!
         }
         
         guard let token = config.sessionToken() else {
-            error = NSError(domain: "APIConnect-makeDataUploadRequest", code: -3, userInfo: [NSLocalizedDescriptionKey: "Unable to upload, no session token exists"])
+            error = NSError(domain: TPUploader.ErrorDomain, code: TPUploader.ErrorCodes.noSessionToken.rawValue, userInfo: [NSLocalizedDescriptionKey: "Unable to upload. No session token exists."])
             throw error!
         }
         

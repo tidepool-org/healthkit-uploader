@@ -34,11 +34,12 @@ class HealthKitUploadManager:
         historicalHelper = HealthKitUploadHelper(.HistoricalAll)
         super.init()
 
-        // Reset persistent uploader state if uploader version is upgraded
-        let latestUploaderVersion = 8
+        // Reset persistent uploader state if uploader version is upgraded in a way that breaks persistent state, or if we have a reason to force all users to reupload
+        let latestUploaderVersion = 9
         let lastExecutedUploaderVersion = settings.lastExecutedUploaderVersion.value
+        DDLogVerbose("Uploader version: (latestUploaderVersion)")
         if latestUploaderVersion != lastExecutedUploaderVersion {
-            DDLogInfo("Migrating uploader to \(latestUploaderVersion)")
+            DDLogInfo("Migrating uploader from: \(lastExecutedUploaderVersion) to: \(latestUploaderVersion)")
             settings.lastExecutedUploaderVersion.value = latestUploaderVersion
             self.resetPersistentState(switchingHealthKitUsers: false)
         }
@@ -297,15 +298,15 @@ private class HealthKitUploadHelper: HealthKitSampleUploaderDelegate, HealthKitU
         var errorCode: Int = 0
         if let serviceAPI = TPUploaderServiceAPI.connector {
             if serviceAPI.currentUploadId == nil {
-                errorMessage = "Unable to upload, no upload id available."
+                errorMessage = "Unable to upload. No upload id available."
                 errorCode = -2
             }
         } else {
-            errorMessage = "Unable to upload, service is not configured."
+            errorMessage = "Unable to upload. Service is not configured."
             errorCode = -1
         }
         if !HealthKitManager.sharedInstance.isHealthDataAvailable {
-            errorMessage = "Unable to upload, Health data not available."
+            errorMessage = "Unable to upload. Health data not available."
             errorCode = -3
         }
         if let errorMessage = errorMessage {
@@ -344,7 +345,7 @@ private class HealthKitUploadHelper: HealthKitSampleUploaderDelegate, HealthKitU
             settings.historicalEarliestDate.value = newHistoricalFence
         }
 
-        if (mode == TPUploader.Mode.Current) {
+        if mode == TPUploader.Mode.Current {
             // Observe new samples for Current mode
             DDLogInfo("Start observing samples after starting upload. Mode: \(mode)")
             for reader in readers {
@@ -399,7 +400,7 @@ private class HealthKitUploadHelper: HealthKitSampleUploaderDelegate, HealthKitU
 
         self.uploader.cancelTasks()
 
-        if (mode == TPUploader.Mode.Current) {
+        if mode == TPUploader.Mode.Current {
             for reader in readers {
                 reader.stopObservingSamples()
             }
@@ -423,7 +424,7 @@ private class HealthKitUploadHelper: HealthKitSampleUploaderDelegate, HealthKitU
     func resumeUploadingIfResumable(currentUserId: String?) {
         DDLogVerbose("(\(mode.rawValue))")
 
-        if (currentUserId != nil && !self.isUploading) {
+        if currentUserId != nil && !self.isUploading {
             if mode == TPUploader.Mode.Current {
                 // Always OK to resume Current
                 self.startUploading(currentUserId: currentUserId!)

@@ -16,7 +16,6 @@ class HKGlobalSettings {
     var interfaceUserId: HKSettingString
     var interfaceUserName: HKSettingString
     var hkDataUploadId: HKSettingString
-    var authorizationRequestedForUploaderSamples: HKSettingBool
     var lastExecutedUploaderVersion: HKSettingInt
     var hasPresentedSyncUI: HKSettingBool
     // global upload...
@@ -69,7 +68,6 @@ class HKGlobalSettings {
         self.interfaceUserId = HKSettingString(key: "kUserIdForHealthKitInterfaceKey")
         self.interfaceUserName = HKSettingString(key: "kUserNameForHealthKitInterfaceKey")
         self.hkDataUploadId = HKSettingString(key: "kHKDataUploadIdKey")
-        self.authorizationRequestedForUploaderSamples = HKSettingBool(key: "authorizationRequestedForUploaderSamples")
         self.lastExecutedUploaderVersion = HKSettingInt(key: "LastExecutedUploaderVersionKey")
         self.hasPresentedSyncUI = HKSettingBool(key: "HasPresentedSyncUI")
         // global upload...
@@ -86,7 +84,6 @@ class HKGlobalSettings {
             self.interfaceUserId,
             self.interfaceUserName,
             self.hkDataUploadId,
-            self.authorizationRequestedForUploaderSamples,
             self.hasPresentedSyncUI,
         ]
         self.historicalUploadSettings = [

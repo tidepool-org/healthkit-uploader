@@ -26,7 +26,7 @@ public extension DateFormatter {
 
     func isoStringFromDate(_ date: Date, zone: TimeZone? = nil, dateFormat: String? = nil) -> String {
         self.locale = Locale(identifier: "en_US_POSIX")
-        if (zone != nil) {
+        if zone != nil {
             self.timeZone = zone
         } else {
             self.timeZone = TimeZone.autoupdatingCurrent

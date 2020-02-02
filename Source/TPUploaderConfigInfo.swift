@@ -33,8 +33,9 @@ public protocol TPUploaderConfigInfo {
     var bioSex: String? { get set }
   
     /// interface callbacks
+    func onTurningOnInterface();
     func onTurnOnInterface();
-    func onTurnOffInterface();
+    func onTurnOffInterface(_ error: Error?);
 
     /// logging callbacks
     func logVerbose(_ str: String)

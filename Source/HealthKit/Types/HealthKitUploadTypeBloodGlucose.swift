@@ -124,13 +124,13 @@ class HealthKitUploadTypeBloodGlucose: HealthKitUploadType {
                     var annotationCode: String?
                     var annotationValue: String?
                     var annotationThreshold = 0
-                    if (value < 40) {
+                    if value < 40 {
                         annotationCode = "bg/out-of-range"
                         annotationValue = "low"
                         annotationThreshold = 40
                         // also set value to 39 as does the Tidepool Uploader...
                         value = 39
-                    } else if (value > 400) {
+                    } else if value > 400 {
                         annotationCode = "bg/out-of-range"
                         annotationValue = "high"
                         annotationThreshold = 400
