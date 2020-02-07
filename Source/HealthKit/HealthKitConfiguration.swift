@@ -83,6 +83,8 @@ class HealthKitConfiguration
             TPUploaderServiceAPI.connector?.configureUploadId() { (error) in
                 // if we are still turning on the HK interface after fetch of upload id, continue!
                 if self.turningOnHKInterface {
+                    DDLogInfo("No longer turning on HK interface")
+                    self.turningOnHKInterface = false
                     if TPUploaderServiceAPI.connector?.currentUploadId != nil {
                         self.turnOnInterface()
                     } else {
@@ -90,8 +92,6 @@ class HealthKitConfiguration
                         // TODO: uploader - if we fail after n times, then propagate the error
                         self.turnOffInterface(error)
                     }
-                    self.turningOnHKInterface = false
-                    DDLogInfo("No longer turning on HK interface")
                 }
             }
         } else {
