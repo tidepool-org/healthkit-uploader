@@ -43,7 +43,7 @@ class HealthKitUploadTypeInsulin: HealthKitUploadType {
     }
 
     override func prepareDataForUpload(_ sample: HKSample) -> [String: AnyObject]? {
-        DDLogInfo("insulin prepareDataForUpload")
+            DDLogInfo("insulin prepareDataForUpload")
             if let quantitySample = sample as? HKQuantitySample {
                 
                 var sampleToUploadDict = [String: AnyObject]()
@@ -62,13 +62,14 @@ class HealthKitUploadTypeInsulin: HealthKitUploadType {
                     let durationInMS = seconds*1000 // convert to milliseconds
                     // service syntax check: [required; 0 <= duration <= 86400000]
                     if durationInMS <= 0 {
-                        //TODO: report as data error?
+                        // TODO: validation - report as data error?
                         DDLogError("Skip basal insulin entry with non-positive duration: \(durationInMS)")
                         if !kDebugTurnOffSampleChecks {
                             return nil
                         }
                     }
                     // 7 days max!
+                    // TODO: validation - report as data error?
                     if durationInMS > 604800000 {
                         DDLogError("Skip basal insulin entry with > 7-day duration: \(durationInMS)")
                         if !kDebugTurnOffSampleChecks {
@@ -80,6 +81,7 @@ class HealthKitUploadTypeInsulin: HealthKitUploadType {
                     let hours = seconds/3600.0
                     let rate = value/hours
                     // service syntax check: [required; 0.0 <= rate <= 100.0 - note docs wrongly spec'ed 20.0]
+                    // TODO: validation - report as data error?
                     if rate < 0.0 || rate > 100.0 {
                         DDLogError("Skip basal insulin entry with out-of-range rate: \(rate)")
                         if !kDebugTurnOffSampleChecks {
@@ -87,13 +89,14 @@ class HealthKitUploadTypeInsulin: HealthKitUploadType {
                         }
                     }
                     sampleToUploadDict["rate"] = rate as AnyObject
-                    DDLogInfo("insulin basal value = \(String(describing: value))")
+                    // DDLogInfo("insulin basal value = \(String(describing: value))")
                     sampleToUploadDict["deliveryType"] = "temp" as AnyObject?
                     if let scheduledRate = sample.metadata?[MetadataKeyScheduledBasalRate] as? HKQuantity {
                         let unitsPerHour = HKUnit.internationalUnit().unitDivided(by: .hour())
                         if scheduledRate.is(compatibleWith: unitsPerHour) {
                             let scheduledRateValue = scheduledRate.doubleValue(for: unitsPerHour)
                             // service syntax check: [required; 0.0 <= rate <= 20.0]
+                            // TODO: validation - report as data error?
                             if value >= 0.0 && value <= 100.0 {
                                 let suppressed: [String : Any] = [
                                     "type": "basal",
@@ -107,6 +110,7 @@ class HealthKitUploadTypeInsulin: HealthKitUploadType {
 
                 case HKInsulinDeliveryReasonBolus:
                     // service syntax check: [required; 0.0 <= normal <= 100.0]
+                    // TODO: validation - report as data error?
                     if value < 0.0 || value > 100.0 {
                         DDLogError("Skip bolus insulin entry with out-of-range normal: \(value)")
                         if !kDebugTurnOffSampleChecks {
@@ -116,10 +120,10 @@ class HealthKitUploadTypeInsulin: HealthKitUploadType {
                     sampleToUploadDict["type"] = "bolus" as AnyObject?
                     sampleToUploadDict["subType"] = "normal" as AnyObject?
                     sampleToUploadDict["normal"] = value as AnyObject
-                    DDLogInfo("insulin bolus value = \(String(describing: value))")
+                    // DDLogInfo("insulin bolus value = \(String(describing: value))")
 
                 default:
-                    //TODO: report as data error?
+                    // TODO: validation - report as data error?
                     DDLogError("Skip insulin entry with unknown key for reason: \(String(describing: reason))")
                     return nil
                 }

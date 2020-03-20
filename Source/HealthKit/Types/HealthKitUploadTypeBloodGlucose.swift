@@ -34,6 +34,7 @@ class HealthKitUploadTypeBloodGlucose: HealthKitUploadType {
             "loop" : false,
             "bgmtool" : false,
             "dexcom" : true,
+            "tomato" : false,
             ]
         // bundleId string, isDexcom?
         let whiteListBundleIds = [
@@ -112,7 +113,7 @@ class HealthKitUploadTypeBloodGlucose: HealthKitUploadType {
                 var value = quantitySample.quantity.doubleValue(for: unit)
                 // service syntax check: [required; 0 <= value <= 1000]
                 if value < 0 || value > 1000 {
-                    //TODO: log this some more obvious way?
+                    // TODO: validation - log this some more obvious way?
                     DDLogError("Blood glucose sample with out-of-range value: \(value)")
                     if !kDebugTurnOffSampleChecks {
                         return nil
@@ -129,12 +130,14 @@ class HealthKitUploadTypeBloodGlucose: HealthKitUploadType {
                         annotationValue = "low"
                         annotationThreshold = 40
                         // also set value to 39 as does the Tidepool Uploader...
+                        // TODO: validation - log this?
                         value = 39
                     } else if value > 400 {
                         annotationCode = "bg/out-of-range"
                         annotationValue = "high"
                         annotationThreshold = 400
                         // also set value to 401 as does the Tidepool Uploader...
+                      // TODO: validation - log this?
                         value = 401
                     }
                     if let annotationCode = annotationCode,

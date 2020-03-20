@@ -22,8 +22,6 @@ public protocol TPUploaderConfigInfo {
     func sessionToken() -> String?
     /// base string to constuct url for current service.
     func baseUrlString() -> String?
-    /// http status 401 encountered, token has probably expired!
-    func authorizationErrorReceived()
     /// current logged in user id
     func currentUserId() -> String?
     /// account for current user is a DSA
@@ -36,6 +34,20 @@ public protocol TPUploaderConfigInfo {
     func onTurningOnInterface();
     func onTurnOnInterface();
     func onTurnOffInterface(_ error: Error?);
+  
+    /// uploader limits and timmeout (will retry up to n times, using the Int values in the array, the length of the array must be the same for these
+    func samplesUploadLimits() -> [Int]
+    func deletesUploadLimits() -> [Int]
+    func uploaderTimeouts() -> [Int]
+  
+    /// suppress deletes, will NOT upload deletes if true
+    func supressUploadDeletes() -> Bool
+  
+    /// simulate upload, will NOT upload if false
+    func simulateUpload() -> Bool
+  
+    /// simulate upload, will NOT include sensitive info (like auth token, and curl request/response for testing, which conain auth token) if false
+    func includeSensitiveInfo() -> Bool
 
     /// logging callbacks
     func logVerbose(_ str: String)

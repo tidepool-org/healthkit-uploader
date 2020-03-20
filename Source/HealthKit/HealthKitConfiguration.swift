@@ -35,7 +35,8 @@ class HealthKitConfiguration
     func configureHealthKitInterface() {
         configureHealthKitInterface(shouldAuthorize: true)
     }
-    private var turningOnHKInterface = false
+    private(set) var turningOnHKInterface = false
+    private(set) var isInterfaceOn = false
 
     private func configureHealthKitInterface(shouldAuthorize: Bool) {
         DDLogVerbose("\(#function), shouldAuthorize: \(shouldAuthorize)")
@@ -58,7 +59,7 @@ class HealthKitConfiguration
             DDLogInfo("disable because no current user!")
         }
         
-        if interfaceEnabled {
+        if interfaceEnabled && !isInterfaceOn {
             DDLogInfo("enable!")
                     
             if turningOnHKInterface {
@@ -81,15 +82,14 @@ class HealthKitConfiguration
       
         if interfaceEnabled {
             TPUploaderServiceAPI.connector?.configureUploadId() { (error) in
-                // if we are still turning on the HK interface after fetch of upload id, continue!
+                // If we are still turning on the HK interface after fetch of upload id, continue!
                 if self.turningOnHKInterface {
                     DDLogInfo("No longer turning on HK interface")
                     self.turningOnHKInterface = false
                     if TPUploaderServiceAPI.connector?.currentUploadId != nil {
                         self.turnOnInterface()
                     } else {
-                        // TODO: uploader - if we fail to turn on interface then do a retry up to n (configurable) times
-                        // TODO: uploader - if we fail after n times, then propagate the error
+                        // TODO: uploader - If we fail to turn on interface then do a retry up to n (configurable) times. If it still fails, some sort of error to user, both in sidebar, and in sync UI, with option to trap to retry. Also, when tapping, maybe actually show the real error?
                         self.turnOffInterface(error)
                     }
                 }
@@ -104,22 +104,23 @@ class HealthKitConfiguration
     /// Turn on HK interface: start/resume uploading if possible...
     private func turnOnInterface() {
         DDLogVerbose("\(#function)")
-        
+
+        guard !self.isInterfaceOn else {
+            DDLogInfo("Interface already on, ignoring")
+            return
+        }
+      
+        self.isInterfaceOn = true
         config.onTurnOnInterface();
 
         let hkManager = HealthKitUploadManager.sharedInstance
-        guard !hkManager.isUploadInProgressForMode(.Current) else {
-            DDLogVerbose("uploader already on, ignoring call!")
-            return
-        }
-
-        if let currentUserId = config.currentUserId() {
+        if config.currentUserId() != nil {
             // Always start uploading TPUploader.Mode.Current samples when interface is turned on
-            hkManager.startUploading(mode: TPUploader.Mode.Current, currentUserId: currentUserId)
+            hkManager.startUploading(mode: TPUploader.Mode.Current, config: config)
 
             // Resume uploading other samples too, if resumable
-            // TODO: uploader - Revisit this. Do we want even the non-current mode readers/uploads to resume automatically? Or should that be behind some explicit UI
-            hkManager.resumeUploadingIfResumable(currentUserId: currentUserId)
+            // TODO: uploader - Revisit this. Do we want even the non-current mode readers/uploads to resume automatically? Or should that be behind some explicit resume UI
+            hkManager.resumeUploadingIfResumable(config: config)
             
             // Really just a one-time check to upload biological sex if Tidepool does not have it, but we can get it from HealthKit.
             TPUploaderServiceAPI.connector?.updateProfileBioSexCheck()
@@ -131,6 +132,7 @@ class HealthKitConfiguration
     private func turnOffInterface(_ error: Error?) {
         DDLogVerbose("\(#function)")
 
+        self.isInterfaceOn = false
         config.onTurnOffInterface(error);
 
         HealthKitUploadManager.sharedInstance.stopUploading(reason: TPUploader.StoppedReason.interfaceTurnedOff)

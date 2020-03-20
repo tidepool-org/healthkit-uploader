@@ -28,18 +28,22 @@ public class TPUploader {
     public static let ErrorDomain = "TPUploader";
   
     public enum ErrorCodes: Int {
+        // These are uncommon and likely indicate misuse of the uploader api or something fatal
         case noHealthKit = -1
-        case noProtectedHealthKitData = -2
-        case noNetwork = -3
-        case noBaseUrl = -4
-        case noSession = -5
-        case noSessionToken = -6
-        case noUploadId = -7
-        case noUploadUrl = -8
-        case noBody = -9
-        case noUser = -10
-        case noDSAUser = -11
-        case httpResponse = -20
+        case noBaseUrl = -2
+        case noSession = -3
+        case noSessionToken = -4
+        case noUploadId = -5
+        case noUploadUrl = -6
+        case noBody = -7
+        case noUser = -8
+        case noDSAUser = -9
+      
+        // Upload failures with these errors are possibly retryable, when conditions are favorable
+        case noNetwork = -101
+        case noProtectedHealthKitData = -102
+        case unknownError = -999
+        // NOTE: Positive value error codes are http response error codes, including 401, which usually means the sessionToken is expired! These are not mapped to specific enum values
     }
   
     public enum Mode: String {
@@ -49,7 +53,6 @@ public class TPUploader {
     
     public enum StoppedReason {
         case error(error: Error)
-        case backgroundTimeExpired
         case interfaceTurnedOff
         case uploadingComplete
     }
@@ -92,7 +95,21 @@ public class TPUploader {
     public func configure() {
         hkConfig.configureHealthKitInterface()
     }
-    
+  
+    /**
+     Indicates whether the uploader interface is on
+    */
+    public func isInterfaceOn() -> Bool {
+        return hkConfig.isInterfaceOn
+    }
+
+    /**
+     Indicates whether the uploader interface is trying to turn on
+    */
+    public func isTurningInterfaceOn() -> Bool {
+      return hkConfig.turningOnHKInterface
+    }
+
     /**
      Does this device support HealthKit and is current logged in user account a DSA account?
     */
@@ -169,9 +186,13 @@ public class TPUploader {
         return hkUploadMgr.isUploadInProgressForMode(mode)
     }
     
+    public func retryInfoForMode(_ mode: TPUploader.Mode) -> (Int, Int) {
+        return hkUploadMgr.retryInfoForMode(mode)
+    }
+
     public func startUploading(_ mode: TPUploader.Mode) {
-        if let currentId = config.currentUserId() {
-            hkUploadMgr.startUploading(mode: mode, currentUserId: currentId)
+        if config.currentUserId() != nil {
+          hkUploadMgr.startUploading(mode: mode, config: config)
         } else {
             DDLogVerbose("ERR: startUploading ignored, no current user!")
         }
@@ -181,9 +202,13 @@ public class TPUploader {
         hkUploadMgr.stopUploading(mode: mode, reason: reason)
     }
     
+    public func stopUploading(reason: TPUploader.StoppedReason) {
+        hkUploadMgr.stopUploading(reason: reason)
+    }
+
     public func resumeUploadingIfResumable() {
-        if let currentId = config.currentUserId() {
-            hkUploadMgr.resumeUploadingIfResumable(currentUserId: currentId)
+        if config.currentUserId() != nil {
+            hkUploadMgr.resumeUploadingIfResumable(config: config)
         } else {
             DDLogVerbose("ERR: resumeUploadingIfResumable ignored, no current user!")
         }

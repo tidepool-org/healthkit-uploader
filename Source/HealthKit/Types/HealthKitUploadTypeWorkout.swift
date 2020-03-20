@@ -56,6 +56,7 @@ class HealthKitUploadTypeWorkout: HealthKitUploadType {
                             ] as [String : Any]
                         sampleToUploadDict["distance"] = distance as AnyObject
                     } else {
+                        // TODO: validation - report as data error?
                         DDLogError("Workout sample with out-of-range distance: \(miles) miles, skipping distance field!")
                     }
                 }
@@ -65,6 +66,7 @@ class HealthKitUploadTypeWorkout: HealthKitUploadType {
                     let kEnergyValueKilocaloriesMaximum = 10000.0
                     let kEnergyValueKilocaloriesMinimum = 0.0
                     if !kDebugTurnOffSampleChecks && (energyBurned < kEnergyValueKilocaloriesMinimum || energyBurned > kEnergyValueKilocaloriesMaximum)  {
+                        // TODO: validation - report as data error?
                         DDLogError("Workout sample with out-of-range energy: \(energyBurned) kcal, skipping energy field!")
                     } else {
                         let energy = [

@@ -33,7 +33,6 @@ class HealthKitUploadType {
     // Note: might want to keep this data with HealthKitManager, but this does make it clear that there will only be one observation and one query per type at a time...
     var sampleObservationQuery: HKObserverQuery?
     var sampleBackgroundDeliveryEnabled = false
-    var sampleQueryAnchor = Int(HKAnchoredObjectQueryNoAnchor)
 
     //
     //  MARK: - Public methods

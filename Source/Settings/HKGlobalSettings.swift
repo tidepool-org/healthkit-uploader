@@ -11,35 +11,44 @@ import Foundation
 class HKGlobalSettings {
     static let sharedInstance = HKGlobalSettings()
 
-    // Persistent settings
+    // General interface settings
     var interfaceEnabled: HKSettingBool
     var interfaceUserId: HKSettingString
     var interfaceUserName: HKSettingString
     var hkDataUploadId: HKSettingString
     var lastExecutedUploaderVersion: HKSettingInt
     var hasPresentedSyncUI: HKSettingBool
-    // global upload...
-    var historicalFenceDate: HKSettingDate // same as lastSuccessfulUploadEarliestSampleTime across all types
+  
+    // Other upload settings
+    var historicalEndDate: HKSettingDate
     var historicalEarliestDate: HKSettingDate
+    var historicalLatestDate: HKSettingDate
     var hasPendingHistoricalUploads: HKSettingBool
     var currentStartDate: HKSettingDate
     var hasPendingCurrentUploads: HKSettingBool
     var lastSuccessfulCurrentUploadTime: HKSettingDate
+    var currentTotalSamplesUploadCount: HKSettingInt
+    var currentTotalDeletesUploadCount: HKSettingInt
+    var historicalTotalSamplesUploadCount: HKSettingInt
+    var historicalTotalDeletesUploadCount: HKSettingInt
+    var historicalTotalDays: HKSettingInt
+    var historicalCurrentDay: HKSettingInt
+    var historicalIsResumable: HKSettingBool
 
     func currentProgress() -> TPUploaderGlobalStats {
-        // calculate current global progress from settings
-        var totalDaysHistorical = 0
-        var currentDayHistorical = 0
-        if let earliestDay = self.historicalEarliestDate.value, let latestDay = self.currentStartDate.value {
-            totalDaysHistorical = earliestDay.differenceInDays(latestDay) + 1
-            if let currentDay = historicalFenceDate.value {
-                currentDayHistorical = currentDay.differenceInDays(latestDay) + 1
-            }
-        }
-        DDLogVerbose("HKGlobalSettings lastUpload: \(String(describing: lastSuccessfulCurrentUploadTime.value)), current historical day: \(currentDayHistorical), total historical days: \(totalDaysHistorical)")
-        return TPUploaderGlobalStats(lastUpload: lastSuccessfulCurrentUploadTime.value, totalHistDays: totalDaysHistorical, currentHistDay: currentDayHistorical)
+        DDLogVerbose("HKGlobalSettings lastUpload: \(String(describing: lastSuccessfulCurrentUploadTime.value)), current historical day: \(historicalCurrentDay.value), total historical days: \(historicalTotalDays.value)")
+        return TPUploaderGlobalStats(lastUpload: lastSuccessfulCurrentUploadTime.value, totalHistDays: historicalTotalDays.value, currentHistDay: historicalCurrentDay.value, totalHistSamples: historicalTotalSamplesUploadCount.value, totalHistDeletes: historicalTotalDeletesUploadCount.value, totalCurSamples: currentTotalSamplesUploadCount.value, totalCurDeletes: currentTotalDeletesUploadCount.value)
     }
     
+    func resetAll() {
+        DDLogVerbose("HKGlobalSettings")
+        for setting in userSettings {
+            setting.reset()
+        }
+        self.resetHistoricalUploadSettings()
+        self.resetCurrentUploadSettings()
+    }
+
     func resetHistoricalUploadSettings() {
         DDLogVerbose("HKGlobalSettings")
         for setting in historicalUploadSettings {
@@ -53,15 +62,6 @@ class HKGlobalSettings {
             setting.reset()
         }
     }
-
-    func resetAll() {
-        DDLogVerbose("HKGlobalSettings")
-        for setting in userSettings {
-            setting.reset()
-        }
-        self.resetHistoricalUploadSettings()
-        self.resetCurrentUploadSettings()
-    }
     
     init() {
         self.interfaceEnabled = HKSettingBool(key: "kHealthKitInterfaceEnabledKey")
@@ -71,12 +71,20 @@ class HKGlobalSettings {
         self.lastExecutedUploaderVersion = HKSettingInt(key: "LastExecutedUploaderVersionKey")
         self.hasPresentedSyncUI = HKSettingBool(key: "HasPresentedSyncUI")
         // global upload...
-        self.historicalFenceDate = HKSettingDate(key: "historicalFenceDateKey")
+        self.historicalEndDate = HKSettingDate(key: "historicalEndDateKey")
+        self.historicalLatestDate = HKSettingDate(key: "historicalLatestDateKey")
         self.historicalEarliestDate = HKSettingDate(key: "historicalEarliestDateKey")
         self.hasPendingHistoricalUploads = HKSettingBool(key: "hasPendingHistoricalUploadsKey")
         self.currentStartDate = HKSettingDate(key: "currentStartDateKey")
         self.hasPendingCurrentUploads = HKSettingBool(key: "hasPendingCurrentUploadsKey")
         self.lastSuccessfulCurrentUploadTime = HKSettingDate(key: "lastSuccessfulCurrentUploadTime")
+        self.currentTotalSamplesUploadCount = HKSettingInt(key: "currentTotalSamplesUploadCount")
+        self.currentTotalDeletesUploadCount = HKSettingInt(key: "currentTotalDeletesUploadCount")
+        self.historicalTotalSamplesUploadCount = HKSettingInt(key: "historicalTotalSamplesUploadCount")
+        self.historicalTotalDeletesUploadCount = HKSettingInt(key: "historicalTotalDeletesUploadCount")
+        self.historicalTotalDays = HKSettingInt(key: "historicalTotalDays")
+        self.historicalCurrentDay = HKSettingInt(key: "historicalCurrentDay")
+        self.historicalIsResumable = HKSettingBool(key: "historicalIsResumable")
 
         // additional settings for global reset, used when switching HK user (all except lastExecutedUploaderVersion)
         self.userSettings = [
@@ -87,14 +95,22 @@ class HKGlobalSettings {
             self.hasPresentedSyncUI,
         ]
         self.historicalUploadSettings = [
-            self.historicalFenceDate,
+            self.historicalEndDate,
             self.historicalEarliestDate,
-            self.hasPendingHistoricalUploads
+            self.historicalLatestDate,
+            self.hasPendingHistoricalUploads,
+            self.historicalTotalSamplesUploadCount,
+            self.historicalTotalDeletesUploadCount,
+            self.historicalTotalDays,
+            self.historicalCurrentDay,
+            self.historicalIsResumable
         ]
         self.currentUploadSettings = [
             self.currentStartDate,
             self.hasPendingCurrentUploads,
             self.lastSuccessfulCurrentUploadTime,
+            self.currentTotalSamplesUploadCount,
+            self.currentTotalDeletesUploadCount
         ]
 
     }

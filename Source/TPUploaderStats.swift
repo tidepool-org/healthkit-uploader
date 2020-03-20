@@ -24,27 +24,18 @@ public struct TPUploaderStats {
     public let typeName: String
     public let mode: TPUploader.Mode
     
-    // Used in menu:
     public var hasSuccessfullyUploaded = false
     public var lastSuccessfulUploadTime: Date? = nil
     
-    // Used in uploadUI & menu:
     public var totalDaysHistorical = 0
     public var currentDayHistorical = 0
+  
+    public var totalSamplesUploadCount = 0
+    public var totalDeletesUploadCount = 0
 
-    // Currently unused in UI...
     public var lastSuccessfulUploadEarliestSampleTime: Date? = nil
     public var lastSuccessfulUploadLatestSampleTime: Date? = nil
 
     public var startDateHistoricalSamples: Date? = nil
     public var endDateHistoricalSamples: Date? = nil
-    
-    public var totalUploadCount = 0
-    
-    // Not persisted... used privately
-    var lastUploadAttemptEarliestSampleTime: Date? = nil
-    var lastUploadAttemptLatestSampleTime: Date? = nil
-    var lastUploadAttemptTime : Date? = nil
-    var lastUploadAttemptSampleCount = 0
-    
 }

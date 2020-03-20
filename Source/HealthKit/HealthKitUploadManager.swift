@@ -15,9 +15,8 @@
 
 import HealthKit
 
-// Note: The current upload/historical upload boundary is set some time delta in the past. For previous releases this was 4 hours in order to pick up deletes from Loop that occur 3 hours after Dexcom samples are reported, since only the current upload picks up new deletes (anchor query).
-// The delta is somewhat arbitrary, but should be at least 4 hours. Here it is set to 1 week. On a complete reset (e.g., incompatible uploader update), all samples back this far will be re-uploaded, so it should not be too long in the past.
-let kCurrentStartTimeInPast: TimeInterval = (-60 * 60 * 24 * 7)
+// Note: The current phase start date is set some time delta in the past. Set it to 4 hours to pick up deletes from Loop that occur 3 hours after Dexcom samples are reported, since only the current upload picks up new deletes (anchor query).
+let kCurrentStartTimeInPast: TimeInterval = (-60 * 60 * 4)
 
 class HealthKitUploadManager:
         NSObject,
@@ -46,6 +45,7 @@ class HealthKitUploadManager:
     }
     private var currentHelper: HealthKitUploadHelper
     private var historicalHelper: HealthKitUploadHelper
+    private var config: TPUploaderConfigInfo? // Set during upload (start or resume)
 
     /// Return array of stats per type for specified mode
     func statsForMode(_ mode: TPUploader.Mode) -> [TPUploaderStats] {
@@ -59,9 +59,16 @@ class HealthKitUploadManager:
 
     func isUploadInProgressForMode(_ mode: TPUploader.Mode) -> Bool {
         let helper = mode == .Current ? currentHelper : historicalHelper
-        let result = helper.isUploading
-        DDLogVerbose("returning \(result) for mode \(mode)")
-        return result
+        let isUploading = helper.isUploading
+        DDLogVerbose("returning \(isUploading) for mode \(mode)")
+        return isUploading
+    }
+
+    func retryInfoForMode(_ mode: TPUploader.Mode) -> (Int, Int) {
+      let helper = mode == .Current ? currentHelper : historicalHelper
+      let limitsIndex = helper.uploadLimitsIndex
+      let maxLimitsIndex = helper.samplesUploadLimits.count - 1
+      return (limitsIndex, maxLimitsIndex)
     }
 
     func resetPersistentStateForMode(_ mode: TPUploader.Mode) {
@@ -85,16 +92,18 @@ class HealthKitUploadManager:
         }
     }
 
-    func startUploading(mode: TPUploader.Mode, currentUserId: String) {
+    func startUploading(mode: TPUploader.Mode, config: TPUploaderConfigInfo) {
         DDLogVerbose("mode: \(mode.rawValue)")
+
+        self.config = config
+        let helper = mode == .Current ? currentHelper : historicalHelper
 
         // assume if we have current upload going on, we want to have background task servicing...
         if mode == .Current {
             self.beginSamplesUploadBackgroundTask()
         }
 
-        let helper = mode == .Current ? currentHelper : historicalHelper
-        helper.startUploading(currentUserId: currentUserId)
+        helper.startUploading(config: config, currentUserId: config.currentUserId()!, samplesUploadLimits: config.samplesUploadLimits(), deletesUploadLimits: config.deletesUploadLimits(), uploaderTimeouts: config.uploaderTimeouts())
      }
 
     func stopUploading(mode: TPUploader.Mode, reason: TPUploader.StoppedReason) {
@@ -114,11 +123,12 @@ class HealthKitUploadManager:
         self.stopUploading(mode: .HistoricalAll, reason: reason)
     }
 
-    func resumeUploadingIfResumable(currentUserId: String?) {
+    func resumeUploadingIfResumable(config: TPUploaderConfigInfo) {
         DDLogVerbose("")
+        self.config = config
         if TPUploaderServiceAPI.connector?.currentUploadId != nil {
-            currentHelper.resumeUploadingIfResumable(currentUserId: currentUserId)
-            historicalHelper.resumeUploadingIfResumable(currentUserId: currentUserId)
+          currentHelper.resumeUploadingIfResumable(config: config, currentUserId: config.currentUserId(), samplesUploadLimits: config.samplesUploadLimits(), deletesUploadLimits: config.deletesUploadLimits(), uploaderTimeouts: config.uploaderTimeouts())
+          historicalHelper.resumeUploadingIfResumable(config: config, currentUserId: config.currentUserId(), samplesUploadLimits: config.samplesUploadLimits(), deletesUploadLimits: config.deletesUploadLimits(), uploaderTimeouts: config.uploaderTimeouts())
         } else {
             DDLogError("Unable to resumeUploading - no currentUploadId available!")
         }
@@ -126,7 +136,7 @@ class HealthKitUploadManager:
 
     // Note that beginBackgroundTask calls need to be balanced with endBackgroundTask calls!
     // Current app has a separate call for each mode/type. It calls begin on startReading() and end on stopReading(), if app is in background and mode is .Current. If app transitions to foreground after a begin, the end would not be called!
-    // TODO: It is unclear whether this helps or not; it's not just reading, but also uploading that would need the time. For the new model, we'd want to turn this on before doing a round of reads, and perhaps off after expiration or completion of background upload?
+    // TODO: background uploader - It is unclear whether this helps or not; it's not just reading, but also uploading that would need the time. For the new model, we'd want to turn this on before doing a round of reads, and perhaps off after expiration or completion of background upload?
     private func beginSamplesUploadBackgroundTask() {
 //        if currentSamplesUploadBackgroundTaskIdentifier == nil {
 //            self.currentSamplesUploadBackgroundTaskIdentifier = UIApplication.shared.beginBackgroundTask(expirationHandler: {
@@ -163,7 +173,6 @@ private class HealthKitUploadHelper: HealthKitSampleUploaderDelegate, HealthKitU
 
     init(_ mode: TPUploader.Mode) {
         self.mode = mode
-        self.isUploading = false
         self.uploader = HealthKitUploader(mode)
         self.uploader.delegate = self
         // init reader, stats for the different types
@@ -176,14 +185,22 @@ private class HealthKitUploadHelper: HealthKitSampleUploaderDelegate, HealthKitU
     }
 
     private let mode: TPUploader.Mode
+    private var requestTimeoutInterval: TimeInterval = 60
     private(set) var readers: [HealthKitUploadReader] = []
     private var uploader: HealthKitUploader
-    private(set) var isUploading: Bool
+    private(set) var isUploading: Bool = false
+    private(set) var uploadLimitsIndex: Int = 0
+    private var didResetUploadAttemptsRemaining: Bool = false
+    private var uploadAttemptsRemaining: Int = 1 // Number of upload attempts remaining at current index
+    private(set) var samplesUploadLimits: [Int] = [500]
+    private(set) var deletesUploadLimits: [Int] = [500]
+    private(set) var uploaderTimeouts: [Int] = [60]
     private var samplesToUpload = [[String: AnyObject]]()
+    private var config: TPUploaderConfigInfo? // Set during upload (start or resume)
     // dates of first and last samples in samplesToUpload buffer
     private var firstSampleDate: Date?
     private var lastSampleDate: Date?
-    private var samplesToDelete = [[String: AnyObject]]()
+    private var deletesToUpload = [[String: AnyObject]]()
     let settings = HKGlobalSettings.sharedInstance
 
     func resetPersistentState() {
@@ -191,28 +208,37 @@ private class HealthKitUploadHelper: HealthKitSampleUploaderDelegate, HealthKitU
         for reader in readers {
             reader.resetPersistentStateOfReader()
         }
-        resetUploadBuffers()
+        resetForNextBatch()
     }
 
-    private func resetUploadBuffers() {
-        // reset current samples...
+    private func resetForNextBatch() {
+        for reader in self.readers {
+            reader.resetReadBuffers()
+            reader.resetSamplesUploadStats()
+            reader.resetDeletesUploadStats()
+            reader.reloadQueryAnchor()
+        }
+        self.resetSamplesUploadBuffers()
+        self.resetDeletesUploadBuffers()
+    }
+  
+    private func resetSamplesUploadBuffers() {
         self.samplesToUpload = []
-        self.samplesToDelete = []
         self.firstSampleDate = nil
         self.lastSampleDate = nil
+    }
+
+    private func resetDeletesUploadBuffers() {
+        self.deletesToUpload = []
     }
 
     private func gatherUploadSamples() {
-        if samplesToUpload.count > 0 {
-            DDLogError("ERR: gather called with non-empty buffer!")
-        }
-        self.firstSampleDate = nil
-        self.lastSampleDate = nil
-
-       // get readers that still have samples...
+        self.resetSamplesUploadBuffers()
+      
+      // get readers that still have samples...
         var readersWithSamples: [HealthKitUploadReader] = []
         for reader in readers {
-            reader.resetUploadStats()
+            reader.resetSamplesAttemptStats()
             if reader.nextSampleDate() != nil {
                 readersWithSamples.append(reader)
             }
@@ -251,11 +277,11 @@ private class HealthKitUploadHelper: HealthKitSampleUploaderDelegate, HealthKitU
                     }
                 }
             }
-        } while nextReader != nil && samplesToUpload.count < 500
+        } while nextReader != nil && samplesToUpload.count < samplesUploadLimits[uploadLimitsIndex]
         // let each reader note attempt progress...
         let uploadTime = Date()
         for reader in readersWithSamples {
-            reader.reportNextUploadStatsAtTime(uploadTime)
+            reader.reportNextUploadSamplesStatsAtTime(uploadTime)
         }
         DDLogInfo("found samples to upload: \(samplesToUpload.count) at: \(uploadTime)")
         // note upload attempt...
@@ -264,36 +290,67 @@ private class HealthKitUploadHelper: HealthKitSampleUploaderDelegate, HealthKitU
         }
     }
 
-    // Deletes are not dated, so can't be uploaded in any order. Just load up to 500 deletes...
+    // Deletes are not dated, so can't be uploaded in any order. Just load up to n deletes...
     private func gatherUploadDeletes() {
-        if samplesToDelete.count > 0 {
-            DDLogError("ERR: gather deletes called with non-empty buffer!")
-        }
+        self.resetDeletesUploadBuffers()
+      
         // loop through all readers to get any deletes...
         for reader in readers {
+            reader.resetDeletesAttemptStats()
             var nextDeleteDict: [String: AnyObject]?
             repeat {
                 nextDeleteDict = reader.nextDeletedSampleDict()
-                    if nextDeleteDict != nil {
-                    samplesToDelete.append(nextDeleteDict!)
+                if nextDeleteDict != nil {
+                    deletesToUpload.append(nextDeleteDict!)
                 }
-            } while nextDeleteDict != nil && samplesToDelete.count < 500
-            if samplesToDelete.count >= 500 {
+            } while nextDeleteDict != nil && deletesToUpload.count < deletesUploadLimits[uploadLimitsIndex]
+            if deletesToUpload.count >= deletesUploadLimits[uploadLimitsIndex] {
                 break
             }
         }
+        // let each reader note attempt progress...
+        let uploadTime = Date()
+        for reader in readers {
+            reader.reportNextUploadDeletesStatsAtTime(uploadTime)
+        }
+        DDLogInfo("found delete samples to upload: \(deletesToUpload.count) at: \(uploadTime)")
     }
 
-    func startUploading(currentUserId: String) {
+    func startUploading(config: TPUploaderConfigInfo, currentUserId: String, samplesUploadLimits: [Int], deletesUploadLimits: [Int], uploaderTimeouts: [Int], uploadLimitsIndex: Int = 0, uploadAttemptsRemaining: Int = 1, isRetry: Bool = false) {
         DDLogVerbose("(\(mode.rawValue))")
 
-        guard !self.isUploading else {
+        let wasUploading = self.isUploading
+        guard !wasUploading || isRetry else {
             DDLogInfo("Already uploading, ignoring.")
             return
         }
 
+        DDLogInfo("Start uploading, uploadLimitsIndex: \(uploadLimitsIndex), isRetry: \(uploadLimitsIndex > 0)")
+
         self.isUploading = true
-      
+        self.config = config
+        self.samplesUploadLimits = samplesUploadLimits
+        self.deletesUploadLimits = deletesUploadLimits
+        self.uploaderTimeouts = uploaderTimeouts
+        self.uploadLimitsIndex = uploadLimitsIndex
+        self.uploadAttemptsRemaining = uploadAttemptsRemaining
+        self.requestTimeoutInterval = (TimeInterval)(uploaderTimeouts[uploadLimitsIndex])
+
+        if config.supressUploadDeletes() {
+            DDLogInfo("Suppressing upload of deletes!")
+        } else {
+            DDLogInfo("NOT Suppressing upload of deletes!")
+        }
+
+        if config.simulateUpload() {
+            DDLogInfo("Simulating upload!")
+        } else {
+            DDLogInfo("NOT Simulating upload!")
+        }
+
+        // Cancel any pending tasks (also resets pending state, so we don't get stuck not being able to upload due to early termination or crash wherein the persistent state tracking pending uploads was not reset
+        self.uploader.cancelTasks()
+
         var errorMessage: String?
         var errorCode: Int = 0
         if let serviceAPI = TPUploaderServiceAPI.connector {
@@ -316,39 +373,38 @@ private class HealthKitUploadHelper: HealthKitSampleUploaderDelegate, HealthKitU
             return
         }
 
-        for reader in readers {
-            // If upload reader has been reset, ensure stats are also reset!
-            if !reader.isResumable() {
-                reader.readerSettings.resetAllReaderKeys()
+        if !isResumable() {
+            // Reset reader settings if not resumable
+            for reader in readers {
+                reader.resetPersistentStateOfReader()
             }
-            reader.currentUserId = currentUserId
+            if mode == .Current {
+                settings.resetCurrentUploadSettings()
+            } else {
+                settings.resetHistoricalUploadSettings()
+            }
         }
-        // Cancel any pending tasks (also resets pending state, so we don't get stuck not being able to upload due to early termination or crash wherein the persistent state tracking pending uploads was not reset
-        self.uploader.cancelTasks()
-
-        // For initial state, set up date fenceposts
-        var newHistoricalFence = Date().addingTimeInterval(kCurrentStartTimeInPast)
-        if let currentStart = settings.currentStartDate.value {
-            // Starting a new historical sync...
-            newHistoricalFence = currentStart
-        } else {
-            // No current or historical sync has happened...
-            settings.currentStartDate.value = newHistoricalFence
-            DDLogVerbose("new currentStartDate: \(newHistoricalFence)")
+        resetForNextBatch()
+  
+        // For initial state, set up date fence posts for anchors, and configure and start readers
+        if settings.currentStartDate.value == nil {
+            settings.currentStartDate.value = Date().addingTimeInterval(kCurrentStartTimeInPast)
+            DDLogVerbose("new currentStartDate: \(settings.currentStartDate.value!)")
         }
-
-        if settings.historicalFenceDate.value == nil {
-            // No current or historical sync has happened...
-            settings.historicalFenceDate.value = newHistoricalFence
-            DDLogVerbose("new historicalFenceDate: \(newHistoricalFence)")
-            // Also set earliest sample date here until we discover earlier samples...
-            settings.historicalEarliestDate.value = newHistoricalFence
+        if settings.historicalEndDate.value == nil {
+            settings.historicalEndDate.value = Date()
+            DDLogVerbose("new historicalEndDate: \(settings.historicalEndDate.value!)")
+            // Also set earliest and latest dates here until we discover the range
+            settings.historicalEarliestDate.value = settings.historicalEndDate.value
+            settings.historicalLatestDate.value = settings.historicalEndDate.value
         }
 
         if mode == TPUploader.Mode.Current {
             // Observe new samples for Current mode
             DDLogInfo("Start observing samples after starting upload. Mode: \(mode)")
             for reader in readers {
+                reader.currentUserId = currentUserId
+                reader.sampleReadLimit = samplesUploadLimits[uploadLimitsIndex]
                 reader.enableBackgroundDeliverySamples()
                 reader.startObservingSamples()
             }
@@ -357,16 +413,25 @@ private class HealthKitUploadHelper: HealthKitSampleUploaderDelegate, HealthKitU
             DDLogInfo("Start reading samples after starting upload. Mode: \(mode)")
             // Note: for historical, first step is to figure out sample date range...
             for reader in readers {
+                reader.sampleReadLimit = samplesUploadLimits[uploadLimitsIndex]
+                reader.currentUserId = currentUserId
                 reader.startReading()
             }
         }
 
-        guard self.isUploading else {
-          DDLogInfo("Stopped uploading, don't post TPUploaderNotifications.TurnOnUploader.")
-          return
+        // Mark historical as resumable
+        if mode == .HistoricalAll {
+            self.settings.historicalIsResumable.value = true
         }
 
-        postNotifications([TPUploaderNotifications.Updated, TPUploaderNotifications.TurnOnUploader], mode: mode)
+        guard self.isUploading else {
+            DDLogInfo("Stopped uploading, don't post TPUploaderNotifications.TurnOnUploader.")
+            return
+        }
+
+        if !wasUploading {
+            postNotifications([TPUploaderNotifications.Updated, TPUploaderNotifications.TurnOnUploader], mode: mode)
+        }
     }
 
     private func postNotifications(_ notificationNames: [String], mode: TPUploader.Mode, reason: TPUploader.StoppedReason? = nil) {
@@ -386,13 +451,67 @@ private class HealthKitUploadHelper: HealthKitSampleUploaderDelegate, HealthKitU
         DDLogVerbose("(\(mode.rawValue))")
         
         guard self.isUploading else {
+            if case TPUploader.StoppedReason.interfaceTurnedOff = reason {
+                postNotifications([TPUploaderNotifications.Updated, TPUploaderNotifications.TurnOffUploader], mode: mode, reason: reason)
+            }
             DDLogInfo("Not currently uploading, ignoring. Mode: \(mode)")
             return
         }
-        
-        DDLogInfo("stopUploading. Mode: \(mode). reason: \(String(describing: reason))")
+      
+        // TODO: upload - for non-resumable historical upload, ideally we probably shouldn't reset the anchor if complete? Ideally we would just pick up new entries with current persisted anchor!? But, then we might want a way to force a reset and do a fresh sync?
 
-        self.isUploading = false
+        let isConnectedToNetwork = config?.isConnectedToNetwork() ?? false
+        var error: NSError?
+        if case TPUploader.StoppedReason.error(let stoppedReasonError as NSError) = reason {
+            error = stoppedReasonError
+        }
+        if !isConnectedToNetwork {
+            let message = "Upload paused while offline."
+            error = NSError(domain: TPUploader.ErrorDomain, code: TPUploader.ErrorCodes.noNetwork.rawValue, userInfo: [NSLocalizedDescriptionKey: message])
+        }
+
+        var shouldRetry = false
+        var attemptsRemainingDelta = -1
+        if isConnectedToNetwork && error != nil {
+            if error?.domain == TPUploader.ErrorDomain {
+              switch error!.code {
+                    case TPUploader.ErrorCodes.noProtectedHealthKitData.rawValue:
+                        // Don't retry if we failed due to this error (we will resume when protected data is available again)
+                        break
+                    case 0..<500:
+                        // Don't retry for http errors < 500
+                        if !self.didResetUploadAttemptsRemaining {
+                            self.didResetUploadAttemptsRemaining = true
+                            attemptsRemainingDelta = 2
+                        }
+                        break
+                    default:
+                        shouldRetry = true
+                        break
+                }
+            } else {
+                if error!.domain == NSURLErrorDomain {
+                    if error!.code != NSURLErrorCancelled {
+                        shouldRetry = true
+                    }
+                } else {
+                    // Retry other error domains
+                    shouldRetry = true
+                }
+            }
+            if (shouldRetry) {
+                shouldRetry = true
+                if !self.didResetUploadAttemptsRemaining {
+                    self.didResetUploadAttemptsRemaining = true
+                    attemptsRemainingDelta = 1
+                }
+            }
+        }
+        if shouldRetry && self.uploadLimitsIndex == self.samplesUploadLimits.count - 1 && self.uploadAttemptsRemaining + attemptsRemainingDelta < 1 {
+            DDLogInfo("Retry limit reached! Mode: \(mode)")
+            shouldRetry = false
+        }
+
         for reader in readers {
             reader.currentUserId = nil
             reader.stopReading()
@@ -405,33 +524,63 @@ private class HealthKitUploadHelper: HealthKitSampleUploaderDelegate, HealthKitU
                 reader.stopObservingSamples()
             }
         }
+      
+        if shouldRetry {
+            self.uploadAttemptsRemaining += attemptsRemainingDelta
+            if self.uploadAttemptsRemaining < 1 {
+                self.didResetUploadAttemptsRemaining = false
+                self.uploadAttemptsRemaining = 1
+                self.uploadLimitsIndex = self.uploadLimitsIndex + 1
+            }            
+            DDLogInfo("Will retry! Mode: \(mode), uploadLimitsIndex: \(uploadLimitsIndex + 1), max uploadLimitsIndex: \(self.samplesUploadLimits.count - 1)")
+            self.startUploading(config: self.config!, currentUserId: self.config!.currentUserId()!, samplesUploadLimits: self.config!.samplesUploadLimits(), deletesUploadLimits: self.config!.deletesUploadLimits(), uploaderTimeouts: self.config!.uploaderTimeouts(), uploadLimitsIndex: self.uploadLimitsIndex, uploadAttemptsRemaining: self.uploadAttemptsRemaining, isRetry: true)
+            postNotifications([TPUploaderNotifications.Updated, TPUploaderNotifications.UploadRetry], mode: mode, reason: reason)
+        } else {
+            if mode == .Current {
+                DDLogInfo("Stopped uploading, mode: \(mode), \(String(describing: reason)), total samples: \(self.settings.currentTotalSamplesUploadCount.value), total deletes: \(self.settings.currentTotalDeletesUploadCount.value)")
+            } else {
+                DDLogInfo("Stopped uploading, mode: \(mode), \(String(describing: reason)), total samples: \(self.settings.historicalTotalSamplesUploadCount.value), total deletes: \(self.settings.historicalTotalDeletesUploadCount.value)")
+            }
 
-        postNotifications([TPUploaderNotifications.Updated, TPUploaderNotifications.TurnOffUploader], mode: mode, reason: reason)
+            if mode == .HistoricalAll {
+                if case TPUploader.StoppedReason.error = reason {
+                    self.settings.historicalIsResumable.value = true
+                } else {
+                    self.settings.historicalIsResumable.value = false
+                }
+            }
+
+            self.didResetUploadAttemptsRemaining = false
+            self.uploadAttemptsRemaining = 1
+            self.isUploading = false
+
+            postNotifications([TPUploaderNotifications.Updated, TPUploaderNotifications.TurnOffUploader], mode: mode, reason: reason)
+        }
     }
-
 
     func isResumable() -> Bool {
-        var resumableReaders = false
-        for reader in readers {
-            if reader.isResumable() {
-                resumableReaders = true
-                break
-            }
+        var result: Bool = false
+        if mode == .HistoricalAll {
+            result = settings.historicalIsResumable.value
+            DDLogInfo("Historical is \(result ? "resumable" : "not resumable")")
+        } else {
+            result = true
+          DDLogInfo("Current is resumable")
         }
-        return resumableReaders
+        return result
     }
 
-    func resumeUploadingIfResumable(currentUserId: String?) {
+    func resumeUploadingIfResumable(config: TPUploaderConfigInfo, currentUserId: String?, samplesUploadLimits: [Int], deletesUploadLimits: [Int], uploaderTimeouts: [Int], uploadLimitsIndex: Int = 0, uploadAttemptsRemaining: Int = 1) {
         DDLogVerbose("(\(mode.rawValue))")
 
         if currentUserId != nil && !self.isUploading {
             if mode == TPUploader.Mode.Current {
                 // Always OK to resume Current
-                self.startUploading(currentUserId: currentUserId!)
+                self.startUploading(config: config, currentUserId: currentUserId!, samplesUploadLimits: samplesUploadLimits, deletesUploadLimits: deletesUploadLimits, uploaderTimeouts: uploaderTimeouts, uploadLimitsIndex: uploadLimitsIndex, uploadAttemptsRemaining: uploadAttemptsRemaining)
             } else {
-                // Only resume HistoricalAll if any readers are resumable
+                // Only resume HistoricalAll if resumable
                 if isResumable() {
-                    self.startUploading(currentUserId: currentUserId!)
+                    self.startUploading(config: config, currentUserId: currentUserId!, samplesUploadLimits: samplesUploadLimits, deletesUploadLimits: deletesUploadLimits, uploaderTimeouts: uploaderTimeouts, uploadLimitsIndex: uploadLimitsIndex, uploadAttemptsRemaining: uploadAttemptsRemaining)
                 }
             }
         }
@@ -442,16 +591,22 @@ private class HealthKitUploadHelper: HealthKitSampleUploaderDelegate, HealthKitU
     //
 
     // NOTE: This is usually called on a background queue, not on main thread
-    func sampleUploader(uploader: HealthKitUploader, didCompleteUploadWithError error: Error?, rejectedSamples: [Int]?) {
+    func sampleUploader(uploader: HealthKitUploader, didCompleteUploadWithError error: Error?, rejectedSamples: [Int]?, requestLog: String?, responseLog: String?) {
         DDLogVerbose("(\(uploader.mode.rawValue))")
 
         DispatchQueue.main.async {
             DDLogInfo("didCompleteUploadWithError on main thread")
 
-            // TODO: for upload errors, look at stopping upload process until conditions are more favorable...
             if let error = error as NSError? {
+                // Log the request and response
+              if let requestLog = requestLog, let responseLog = responseLog {
+                    DDLogInfo(requestLog)
+                    DDLogInfo(responseLog)
+                }
+                            
                 // If the service didn't like certain upload samples, remove them and retry...
                 if let rejectedSamples = rejectedSamples {
+                    // TODO: uploader - should we log (via Rollbar) that we had rejected samples? Presumably backend service is aware and should be logging this itself!?
                     DDLogError("Service rejected \(rejectedSamples.count) samples!")
                     if rejectedSamples.count > 0 {
                         let remainingSamples = self.samplesToUpload
@@ -464,7 +619,6 @@ private class HealthKitUploadHelper: HealthKitSampleUploaderDelegate, HealthKitU
                         DDLogVerbose("original count: \(originalCount), remaining count: \(remainingCount), rejected counted: \(rejectedCount)")
                         if originalCount - remainingCount == rejectedCount {
                             self.samplesToUpload = remainingSamples
-                            self.samplesToDelete = [[String: AnyObject]]()
                             self.tryNextUpload()
                             return
                         }
@@ -481,53 +635,97 @@ private class HealthKitUploadHelper: HealthKitSampleUploaderDelegate, HealthKitU
                 self.stopUploading(reason: .error(error: error))
                 return
             }
+          
+            // Success!
+          
+            DDLogInfo("Successfully uploaded \(self.samplesToUpload.count) samples, \(self.deletesToUpload.count) deletes (\(self.mode)), checking for more in batch")
+          
+            // If we haven't been stopped, continue the uploading...
+            guard self.isUploading else {
+                DDLogInfo("Stopping upload...")
+                return
+            }
+  
+            for reader in self.readers {
+                reader.updateForSuccessfulSamplesUploadInBatch()
+            }
+            for reader in self.readers {
+                reader.updateForSuccessfulDeletesUploadInBatch()
+            }
+          
+            // Gather more uploads for batch
+            self.gatherUploadSamples()
+            self.gatherUploadDeletes()
+            if self.samplesToUpload.count > 0 || self.deletesToUpload.count > 0 {
+                DDLogInfo("There are \(self.samplesToUpload.count) more samples and \(self.deletesToUpload.count) more deletes for next upload for batch (\(self.mode))")
+                _ = self.tryNextUpload()
+                return
+            }
 
-            // success!
+            DDLogInfo("Finished uploading batch!")
 
-            DDLogInfo("Upload session succeeded! (\(uploader.mode))")
-
-            // save overall progress...
+            // Save overall progress...
             let uploadTime = Date()
             if self.mode == .Current {
                 self.settings.lastSuccessfulCurrentUploadTime.value = uploadTime
-            } else {
-                // for historical reads, move the end date fence to show progress
-                if let earliestUploadDate = self.firstSampleDate {
-                    // move to 1 second earlier tha last uploaded sample date, to avoid picking up that same sample in a loop!
-                    let newFenceDate = earliestUploadDate.addingTimeInterval(-1.0)
-                    DDLogVerbose("moved historical fence to \(earliestUploadDate) from \(String(describing: self.settings.historicalFenceDate.value))")
-                    self.settings.historicalFenceDate.value = newFenceDate
+            }          
+
+            // Let readers persist any progress anchors and update batch stats
+            for reader in self.readers {
+                reader.updateForFinalSuccessfulUploadInBatch(uploadTime)
+            }
+
+            // Update global total samples and deletes counts (across all reader tpes)
+            var currentTotalSamplesUploadCount = 0
+            var currentTotalDeletesUploadCount = 0
+            var historicalTotalSamplesUploadCount = 0
+            var historicalTotalDeletesUploadCount = 0
+            var totalDaysHistorical = 0
+            var currentDayHistorical = 0
+            for reader in self.readers {
+                if reader.mode == .Current {
+                    currentTotalSamplesUploadCount += reader.readerSettings.totalSamplesUploadCount.value
+                    currentTotalDeletesUploadCount += reader.readerSettings.totalDeletesUploadCount.value
                 } else {
-                    if self.samplesToUpload.count == 0 {
-                        DDLogVerbose("historical fence not moved - no samples uploaded!")
-                    } else {
-                        DDLogError("ERR: expected move of historical fence!")
-                    }
+                    historicalTotalSamplesUploadCount += reader.readerSettings.totalSamplesUploadCount.value
+                    historicalTotalDeletesUploadCount += reader.readerSettings.totalDeletesUploadCount.value
+                    totalDaysHistorical = max(totalDaysHistorical, reader.readerSettings.historicalTotalDays.value)
+                    currentDayHistorical = max(currentDayHistorical, reader.readerSettings.historicalCurrentDay.value)
                 }
             }
-
-            // let readers persist any progress anchors
-            for reader in self.readers {
-                reader.updateForSuccessfulUpload(uploadTime)
-            }
-
-            // reset the upload buffers
-            DDLogInfo("Successfully uploaded \(self.samplesToUpload.count) samples, \(self.samplesToDelete.count) deletes (\(self.mode))")
-            self.resetUploadBuffers()
-
-            // if we haven't been stopped, continue the uploading...
-            guard self.isUploading else {
-                DDLogInfo("stopping upload...")
-                return
-            }
-            // Check if more deletes to do, and upload those...
-            self.gatherUploadDeletes()
-            if self.samplesToDelete.count > 0 {
-                _ = self.tryNextUpload()
+            if self.mode == .Current {
+                self.settings.currentTotalSamplesUploadCount.value = currentTotalSamplesUploadCount
+                self.settings.currentTotalDeletesUploadCount.value = currentTotalDeletesUploadCount
+                DDLogInfo("total upload samples: \(currentTotalSamplesUploadCount), deletes: \(currentTotalDeletesUploadCount) (\(self.mode))")
             } else {
+                self.settings.historicalTotalSamplesUploadCount.value = historicalTotalSamplesUploadCount
+                self.settings.historicalTotalDeletesUploadCount.value = historicalTotalDeletesUploadCount
+                self.settings.historicalTotalDays.value = totalDaysHistorical
+                self.settings.historicalCurrentDay.value = max(self.settings.historicalCurrentDay.value, currentDayHistorical)
+                DDLogInfo("total upload samples: \(historicalTotalSamplesUploadCount), deletes: \(historicalTotalDeletesUploadCount) (\(self.mode))")
+            }
+
+            self.resetForNextBatch()
+
+            // If we have successfully uploaded, then go back one limit in the limits array
+            self.didResetUploadAttemptsRemaining = false
+            self.uploadAttemptsRemaining = 1
+            if self.uploadLimitsIndex > 0 {
+                self.uploadLimitsIndex = max(self.uploadLimitsIndex - 1, 0)
+                for reader in self.readers {
+                    reader.sampleReadLimit = self.samplesUploadLimits[self.uploadLimitsIndex]
+                }
+                self.requestTimeoutInterval = (TimeInterval)(self.uploaderTimeouts[self.uploadLimitsIndex])
+                // For successful upload due to retry, just send .UploadRetry (so listeners can maintain state relative to retry attempts/successes
+                self.postNotifications([TPUploaderNotifications.Updated, TPUploaderNotifications.UploadRetry], mode: self.mode)
+            } else {
+                self.postNotifications([TPUploaderNotifications.Updated, TPUploaderNotifications.UploadSuccessful], mode: self.mode)
+            }
+
+
+            if self.isUploading {
                 self.checkStartNextSampleReads()
             }
-
         }
     }
 
@@ -562,6 +760,15 @@ private class HealthKitUploadHelper: HealthKitSampleUploaderDelegate, HealthKitU
             settings.historicalEarliestDate.value = startDate
             DDLogVerbose("updated overall earliest sample date to \(startDate)")
        }
+       if let latestHistorical = settings.historicalLatestDate.value {
+           if endDate.compare(latestHistorical) == .orderedDescending {
+               settings.historicalLatestDate.value = endDate
+               DDLogVerbose("updated overall latest sample date from \(latestHistorical) to \(endDate)")
+           }
+       } else {
+           settings.historicalLatestDate.value = endDate
+           DDLogVerbose("updated overall latest sample date to \(endDate)")
+      }
     }
 
     // NOTE: This is a query results handler called from HealthKit, but on main thread
@@ -591,7 +798,7 @@ private class HealthKitUploadHelper: HealthKitSampleUploaderDelegate, HealthKitU
         self.gatherUploadSamples()
         self.gatherUploadDeletes()
 
-        guard self.samplesToUpload.count != 0 || self.samplesToDelete.count != 0 else {
+        guard self.samplesToUpload.count != 0 || self.deletesToUpload.count != 0 else {
             DDLogInfo("No samples or deletes to upload!")
             if self.mode == .HistoricalAll {
                 self.stopUploading(reason: .uploadingComplete)
@@ -599,13 +806,13 @@ private class HealthKitUploadHelper: HealthKitSampleUploaderDelegate, HealthKitU
             // for current mode, we keep the observer query active, and leave isUploading true, though all readers will be stopped...
             return
         }
-        // will get called back at didCompleteUploadWithError
+      
         self.tryNextUpload()
     }
 
     private func tryNextUpload() {
         do {
-            DDLogInfo("Start next upload for \(self.samplesToUpload.count) samples, and \(self.samplesToDelete.count) deleted samples. (\(self.mode))")
+            DDLogInfo("Start next upload for \(self.samplesToUpload.count) samples, and \(self.deletesToUpload.count) deleted samples. (\(self.mode))")
 
             // first validate the samples...
             var validatedSamples = [[String: AnyObject]]()
@@ -622,9 +829,9 @@ private class HealthKitUploadHelper: HealthKitSampleUploaderDelegate, HealthKitU
             self.samplesToUpload = validatedSamples
             //print("Next samples to upload: \(samplesToUploadDictArray)")
             DDLogVerbose("Count of samples to upload: \(validatedSamples.count)")
-            DDLogInfo("Start next upload for \(self.samplesToUpload.count) samples, and \(self.samplesToDelete.count) deleted samples. (\(self.mode))")
+            DDLogInfo("Start next upload for \(self.samplesToUpload.count) samples, and \(self.deletesToUpload.count) deleted samples. (\(self.mode))")
 
-            try self.uploader.startUploadSessionTasks(with: self.samplesToUpload, deletes: self.samplesToDelete)
+            try self.uploader.startUploadSessionTasks(with: self.samplesToUpload, deletes: self.config!.supressUploadDeletes() ? [] : self.deletesToUpload, simulate: config!.simulateUpload(), includeSensitiveInfo: config!.includeSensitiveInfo(), requestTimeoutInterval: self.requestTimeoutInterval)
         } catch let error {
             DDLogError("Failed to prepare upload (\(self.mode)). Error: \(String(describing: error))")
             self.stopUploading(reason: .error(error: error))

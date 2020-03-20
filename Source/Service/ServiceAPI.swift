@@ -167,9 +167,6 @@ public class TPUploaderServiceAPI {
     /// Call this after fetching user profile, as part of configureHealthKitInterface, to ensure we have a dataset id for health data uploads (if so enabled).
     /// - parameter completion: Method that will be called when this async operation has completed. If successful, currentUploadId in TidepoolMobileDataController will be set; if not, it will still be nil.
     func configureUploadId(_ completion: @escaping (_ error: Error?) -> (Void)) {
-        // TODO: Propagate errors via completion. If we fail to get a data upload id (due to
-        // server error or something), we turn off the interface and current and historical uploads
-        // won't work. Need to communicate that to the user.
         DDLogInfo("configureUploadId")
         if let userId = config.currentUserId() {
             // if we don't have an uploadId, first try fetching one from the server...
@@ -264,7 +261,7 @@ public class TPUploaderServiceAPI {
                 var message = "Fetch existing dataset failed"
                 var error = result.error
                 if error == nil {
-                    error = NSError(domain: TPUploader.ErrorDomain, code: TPUploader.ErrorCodes.httpResponse.rawValue, userInfo: [NSLocalizedDescriptionKey: message])
+                    error = NSError(domain: TPUploader.ErrorDomain, code: result.httpResponse?.statusCode ?? TPUploader.ErrorCodes.unknownError.rawValue, userInfo: [NSLocalizedDescriptionKey: message])
                     DDLogError(message)
                 } else {
                   message = error!.localizedDescription
@@ -325,7 +322,7 @@ public class TPUploaderServiceAPI {
                 var message = "Create new dataset failed"
                 var error = result.error
                 if error == nil {
-                    error = NSError(domain: TPUploader.ErrorDomain, code: TPUploader.ErrorCodes.httpResponse.rawValue, userInfo: [NSLocalizedDescriptionKey: message])
+                    error = NSError(domain: TPUploader.ErrorDomain, code: result.httpResponse?.statusCode ?? TPUploader.ErrorCodes.unknownError.rawValue, userInfo: [NSLocalizedDescriptionKey: message])
                     DDLogError(message)
                 } else {
                   message = error!.localizedDescription
@@ -526,12 +523,7 @@ public class TPUploaderServiceAPI {
         
         return request as URLRequest
     }
-
-    func receivedAuthErrorOnUpload() {
-        DDLogError("Authorization error on upload!")
-        self.config.authorizationErrorReceived()
-    }
-    
+  
     // User-agent string, based on that from Alamofire, but common regardless of whether Alamofire library is used
     private func userAgentString() -> String {
         if _userAgentString == nil {
