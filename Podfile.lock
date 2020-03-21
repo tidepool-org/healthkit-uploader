@@ -1,0 +1,26 @@
+PODS:
+  - Alamofire (4.9.1)
+  - CocoaLumberjack/Core (3.5.3)
+  - CocoaLumberjack/Swift (3.5.3):
+    - CocoaLumberjack/Core
+  - SwiftyJSON (5.0.0)
+
+DEPENDENCIES:
+  - Alamofire (= 4.9.1)
+  - CocoaLumberjack/Swift (~> 3.5.3)
+  - SwiftyJSON (= 5.0.0)
+
+SPEC REPOS:
+  trunk:
+    - Alamofire
+    - CocoaLumberjack
+    - SwiftyJSON
+
+SPEC CHECKSUMS:
+  Alamofire: 85e8a02c69d6020a0d734f6054870d7ecb75cf18
+  CocoaLumberjack: 2f44e60eb91c176d471fdba43b9e3eae6a721947
+  SwiftyJSON: 36413e04c44ee145039d332b4f4e2d3e8d6c4db7
+
+PODFILE CHECKSUM: af60508fa257c19dd43c8e242c67b73443c82178
+
+COCOAPODS: 1.8.4
