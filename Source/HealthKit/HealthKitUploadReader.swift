@@ -47,6 +47,7 @@ class HealthKitUploadReader: NSObject {
     weak var delegate: HealthKitUploadReaderDelegate?
     let readerSettings: HKTypeModeSettings
     var queryAnchor: HKQueryAnchor?
+    // TODO: uploader - consider having read limits that coordinate better with upload limits so that we don't override. As it is now, the read limit is same as upload limit, but, we have four HK types that we read (four readers), so, we could be reading 4x what we need to, thus potentially buffering more samples per batch, and taking longer to complete the batch before potentially failing and entering retry.
     var sampleReadLimit: Int
     
     private(set) var uploadType: HealthKitUploadType

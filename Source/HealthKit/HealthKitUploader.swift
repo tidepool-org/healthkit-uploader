@@ -363,7 +363,7 @@ class HealthKitUploader: NSObject, URLSessionDelegate, URLSessionTaskDelegate, U
         if mode == .Current {
             let configuration = URLSessionConfiguration.background(withIdentifier: "\(prefixedLocalId(self.backgroundUploadSessionIdentifier))-\(uniqueSessionId())")
             // TODO: background uploader - review timeouts for background session, it will be harder to use the variable timeouts on retry with background session requests
-            // TODO: background uploader -  reconsider session for .Current .. when in foreground, ensure upload session just like hostircal .. when in background, use background session (or is it possible to use background task with normal session?
+            // TODO: background uploader -  reconsider session for .Current .. when in foreground, ensure upload session just like historical .. when in background, use background session (or is it possible to use background task with normal session?
             
             configuration.timeoutIntervalForResource = 60
             configuration.timeoutIntervalForRequest = 60
