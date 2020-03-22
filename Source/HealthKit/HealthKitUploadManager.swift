@@ -189,6 +189,7 @@ private class HealthKitUploadHelper: HealthKitSampleUploaderDelegate, HealthKitU
     private(set) var readers: [HealthKitUploadReader] = []
     private var uploader: HealthKitUploader
     private(set) var isUploading: Bool = false
+    private var startTime: Date = Date()
     private(set) var uploadLimitsIndex: Int = 0
     private var didResetUploadAttemptsRemaining: Bool = false
     private var uploadAttemptsRemaining: Int = 1 // Number of upload attempts remaining at current index
@@ -328,6 +329,7 @@ private class HealthKitUploadHelper: HealthKitSampleUploaderDelegate, HealthKitU
         DDLogInfo("Start uploading, uploadLimitsIndex: \(uploadLimitsIndex), isRetry: \(uploadLimitsIndex > 0)")
 
         self.isUploading = true
+        self.startTime = Date()
         self.config = config
         self.samplesUploadLimits = samplesUploadLimits
         self.deletesUploadLimits = deletesUploadLimits
@@ -469,7 +471,7 @@ private class HealthKitUploadHelper: HealthKitSampleUploaderDelegate, HealthKitU
             let message = "Upload paused while offline."
             error = NSError(domain: TPUploader.ErrorDomain, code: TPUploader.ErrorCodes.noNetwork.rawValue, userInfo: [NSLocalizedDescriptionKey: message])
         }
-
+        
         var shouldRetry = false
         var attemptsRemainingDelta = -1
         if isConnectedToNetwork && error != nil {
@@ -480,13 +482,13 @@ private class HealthKitUploadHelper: HealthKitSampleUploaderDelegate, HealthKitU
                         break
                     case 0..<500:
                         // Don't retry for http errors < 500
+                        break
+                    default:
+                        shouldRetry = true
                         if !self.didResetUploadAttemptsRemaining {
                             self.didResetUploadAttemptsRemaining = true
                             attemptsRemainingDelta = 2
                         }
-                        break
-                    default:
-                        shouldRetry = true
                         break
                 }
             } else {
@@ -553,7 +555,12 @@ private class HealthKitUploadHelper: HealthKitSampleUploaderDelegate, HealthKitU
             self.didResetUploadAttemptsRemaining = false
             self.uploadAttemptsRemaining = 1
             self.isUploading = false
-
+            
+            // Log total time for the upload
+            // TODO: uploader - also track total retries needed for the total upload. And report that up through to the UI (Debug UI) and log it here
+            let seconds = -self.startTime.timeIntervalSinceNow
+            DDLogInfo("Total upload finished in: \((Int)(seconds)) seconds")
+          
             postNotifications([TPUploaderNotifications.Updated, TPUploaderNotifications.TurnOffUploader], mode: mode, reason: reason)
         }
     }
