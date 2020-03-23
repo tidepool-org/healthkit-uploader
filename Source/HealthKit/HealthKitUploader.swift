@@ -31,6 +31,7 @@ class HealthKitUploader: NSObject, URLSessionDelegate, URLSessionTaskDelegate, U
 
     private(set) var mode: TPUploader.Mode
     var requestTimeoutInterval: TimeInterval = 60
+    private var useBackgroundUrlSessionWithIdentifier = false
     weak var delegate: HealthKitSampleUploaderDelegate?
     private let settings = HKGlobalSettings.sharedInstance
 
@@ -385,16 +386,19 @@ class HealthKitUploader: NSObject, URLSessionDelegate, URLSessionTaskDelegate, U
         }
 
         if mode == .Current {
-            // TODO: background upload - when in background, use background session (file based?), and when in foreground, use foreground session
-            let configuration = URLSessionConfiguration.background(withIdentifier: "\(prefixedLocalId(self.backgroundUploadSessionIdentifier))-\(uniqueSessionId())")
-            // TODO: background uploader - review timeouts for background session, it will be harder to use the variable timeouts on retry with background session requests
-            // TODO: background uploader -  reconsider session for .Current .. when in foreground, ensure upload session just like historical .. when in background, use background session (or is it possible to use background task with normal session?
-            
-            configuration.timeoutIntervalForResource = 60
-            configuration.timeoutIntervalForRequest = 60
-            let newUploadSession = URLSession(configuration: configuration, delegate: self, delegateQueue: nil)
-            newUploadSession.delegateQueue.maxConcurrentOperationCount = 1 // So we can serialize the metadata and samples upload POSTs
-            self.uploadSession = newUploadSession
+            if useBackgroundUrlSessionWithIdentifier {
+                // TODO: background uploader - review timeouts for background session, it will be harder to use the variable timeouts on retry with background session requests
+                let configuration = URLSessionConfiguration.background(withIdentifier: "\(prefixedLocalId(self.backgroundUploadSessionIdentifier))-\(uniqueSessionId())")
+                configuration.timeoutIntervalForResource = 60
+                configuration.timeoutIntervalForRequest = 60
+                let newUploadSession = URLSession(configuration: configuration, delegate: self, delegateQueue: nil)
+                newUploadSession.delegateQueue.maxConcurrentOperationCount = 1 // So we can serialize the metadata and samples upload POSTs
+                self.uploadSession = newUploadSession
+            } else {
+                let configuration = URLSessionConfiguration.default
+                let newUploadSession = URLSession(configuration: configuration, delegate: self, delegateQueue: nil)
+                self.uploadSession = newUploadSession
+            }
         } else {
             let configuration = URLSessionConfiguration.default
             let newUploadSession = URLSession(configuration: configuration, delegate: self, delegateQueue: nil)
@@ -446,7 +450,7 @@ class HealthKitUploader: NSObject, URLSessionDelegate, URLSessionTaskDelegate, U
         // print("Post body for upload: \(postBody)")
       
         // If session is background session (with identifier), then write the post body to file
-        if self.uploadSession?.configuration.identifier != nil {
+        if useBackgroundUrlSessionWithIdentifier && self.uploadSession?.configuration.identifier != nil {
             let postBodyUrl = getUploadURLForIdentifier(with: identifier)
             try postBody.write(to: postBodyUrl, options: .atomic)
             return (postBodyUrl, postBody)

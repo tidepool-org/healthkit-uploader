@@ -38,6 +38,9 @@ public class TPUploader {
         case noBody = -7
         case noUser = -8
         case noDSAUser = -9
+        case backgroundTimeExpiring = -10
+        case backgroundTimeExpired = -11
+        case applicationWillTerminate = -12
       
         // Upload failures with these errors are possibly retryable, when conditions are favorable
         case noNetwork = -101

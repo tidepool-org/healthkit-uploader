@@ -98,23 +98,14 @@ class HealthKitUploadManager:
         self.config = config
         let helper = mode == .Current ? currentHelper : historicalHelper
 
-        // assume if we have current upload going on, we want to have background task servicing...
-        if mode == .Current {
-            self.beginSamplesUploadBackgroundTask()
-        }
-
-        helper.startUploading(config: config, currentUserId: config.currentUserId()!, samplesUploadLimits: config.samplesUploadLimits(), deletesUploadLimits: config.deletesUploadLimits(), uploaderTimeouts: config.uploaderTimeouts())
+        // Start at index 1 instead of 0 so first so we can show status more quickly to the user, and so that background mode is more likely to finish quickly?
+        helper.startUploading(config: config, currentUserId: config.currentUserId()!, samplesUploadLimits: config.samplesUploadLimits(), deletesUploadLimits: config.deletesUploadLimits(), uploaderTimeouts: config.uploaderTimeouts(), uploadLimitsIndex: 1)
      }
 
     func stopUploading(mode: TPUploader.Mode, reason: TPUploader.StoppedReason) {
         DDLogVerbose("(\(mode.rawValue)) reason: \(reason)")
         let helper = mode == .Current ? currentHelper : historicalHelper
         helper.stopUploading(reason: reason)
-
-        // assume if we don't have current upload going on, we don't need background task..
-        if mode == .Current {
-            self.endSamplesUploadBackgroundTask()
-        }
     }
 
     func stopUploading(reason: TPUploader.StoppedReason) {
@@ -133,33 +124,6 @@ class HealthKitUploadManager:
             DDLogError("Unable to resumeUploading - no currentUploadId available!")
         }
     }
-
-    // Note that beginBackgroundTask calls need to be balanced with endBackgroundTask calls!
-    // Current app has a separate call for each mode/type. It calls begin on startReading() and end on stopReading(), if app is in background and mode is .Current. If app transitions to foreground after a begin, the end would not be called!
-    // TODO: background uploader - It is unclear whether this helps or not; it's not just reading, but also uploading that would need the time. For the new model, we'd want to turn this on before doing a round of reads, and perhaps off after expiration or completion of background upload?
-    private func beginSamplesUploadBackgroundTask() {
-//        if currentSamplesUploadBackgroundTaskIdentifier == nil {
-//            self.currentSamplesUploadBackgroundTaskIdentifier = UIApplication.shared.beginBackgroundTask(expirationHandler: {
-//                () -> Void in
-//                DispatchQueue.main.async {
-//                    let message = "Background time expired"
-//                    DDLogInfo(message)
-//                    //UIApplication.localNotifyMessage(message)
-//                }
-//            })
-//        }
-    }
-
-    private func endSamplesUploadBackgroundTask() {
-//        if let currentSamplesUploadBackgroundTaskIdentifier = self.currentSamplesUploadBackgroundTaskIdentifier {
-//            UIApplication.shared.endBackgroundTask(currentSamplesUploadBackgroundTaskIdentifier)
-//            self.currentSamplesUploadBackgroundTaskIdentifier = nil
-//
-//        }
-    }
-
-    private var currentSamplesUploadBackgroundTaskIdentifier: UIBackgroundTaskIdentifier?
-
 }
 
 //
@@ -338,6 +302,11 @@ private class HealthKitUploadHelper: HealthKitSampleUploaderDelegate, HealthKitU
         self.uploadAttemptsRemaining = uploadAttemptsRemaining
         self.requestTimeoutInterval = (TimeInterval)(uploaderTimeouts[uploadLimitsIndex])
 
+        // Ensure background task if we're in background
+        if UIApplication.shared.applicationState == .background {
+            self.beginSamplesUploadBackgroundTask()
+        }
+
         if config.supressUploadDeletes() {
             DDLogInfo("Suppressing upload of deletes!")
         } else {
@@ -477,18 +446,14 @@ private class HealthKitUploadHelper: HealthKitSampleUploaderDelegate, HealthKitU
         if isConnectedToNetwork && error != nil {
             if error?.domain == TPUploader.ErrorDomain {
               switch error!.code {
-                    case TPUploader.ErrorCodes.noProtectedHealthKitData.rawValue:
-                        // Don't retry if we failed due to this error (we will resume when protected data is available again)
-                        break
-                    case 0..<500:
-                        // Don't retry for http errors < 500
-                        break
-                    default:
+                    case 500..<600:
                         shouldRetry = true
                         if !self.didResetUploadAttemptsRemaining {
                             self.didResetUploadAttemptsRemaining = true
                             attemptsRemainingDelta = 2
                         }
+                        break
+                    default:
                         break
                 }
             } else {
@@ -561,6 +526,10 @@ private class HealthKitUploadHelper: HealthKitSampleUploaderDelegate, HealthKitU
             let seconds = -self.startTime.timeIntervalSinceNow
             DDLogInfo("Total upload finished in: \((Int)(seconds)) seconds")
           
+            if mode == .Current {
+                self.endSamplesUploadBackgroundTask()
+            }
+
             postNotifications([TPUploaderNotifications.Updated, TPUploaderNotifications.TurnOffUploader], mode: mode, reason: reason)
         }
     }
@@ -729,13 +698,53 @@ private class HealthKitUploadHelper: HealthKitSampleUploaderDelegate, HealthKitU
                 self.postNotifications([TPUploaderNotifications.Updated, TPUploaderNotifications.UploadSuccessful], mode: self.mode)
             }
 
-
+            self.checkBackgroundTimeRemaining()
+          
             if self.isUploading {
                 self.checkStartNextSampleReads()
             }
         }
     }
+  
+    private func beginSamplesUploadBackgroundTask() {
+        if self.mode == .Current && self.uploadBackgroundTaskIdentifier == nil {
+            self.uploadBackgroundTaskIdentifier = UIApplication.shared.beginBackgroundTask(expirationHandler: {
+                () -> Void in
+                DispatchQueue.main.async {
+                    let message = "Stop upload due to background time expired."
+                    let error = NSError(domain: TPUploader.ErrorDomain, code: TPUploader.ErrorCodes.backgroundTimeExpired.rawValue, userInfo: [NSLocalizedDescriptionKey: message])
+                    DDLogInfo(message)
+                    self.stopUploading(reason: .error(error: error))
+                    
+                    // UIApplication.localNotifyMessage(message)
+                }
+            })
+        }
+    }
 
+    private func endSamplesUploadBackgroundTask() {
+        if let uploadBackgroundTaskIdentifier = self.uploadBackgroundTaskIdentifier {
+            UIApplication.shared.endBackgroundTask(uploadBackgroundTaskIdentifier)
+            self.uploadBackgroundTaskIdentifier = nil
+        }
+    }
+  
+    private func checkBackgroundTimeRemaining() {
+        if self.uploadBackgroundTaskIdentifier != nil {
+            let backgroundTimeRemaining = UIApplication.shared.backgroundTimeRemaining
+            DDLogInfo("Background time remaining: \(backgroundTimeRemaining) seconds")
+            if backgroundTimeRemaining < 5 {
+                let message = "Stop upload due to background time expiring."
+                let error = NSError(domain: TPUploader.ErrorDomain, code: TPUploader.ErrorCodes.backgroundTimeExpiring.rawValue, userInfo: [NSLocalizedDescriptionKey: message])
+                DDLogInfo(message)
+                self.stopUploading(reason: .error(error: error))
+                self.endSamplesUploadBackgroundTask()
+            }
+        }
+    }
+
+    private var uploadBackgroundTaskIdentifier: UIBackgroundTaskIdentifier?
+  
     private func checkStartNextSampleReads() {
         DDLogVerbose("(\(uploader.mode.rawValue))")
         var moreToRead = false
