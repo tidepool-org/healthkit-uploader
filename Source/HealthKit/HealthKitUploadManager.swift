@@ -309,7 +309,7 @@ private class HealthKitUploadHelper: HealthKitSampleUploaderDelegate, HealthKitU
             self.beginSamplesUploadBackgroundTask()
         }
 
-        if config.supressUploadDeletes() {
+        if config.supressUploadDeletes() || self.mode == .HistoricalAll {
             DDLogInfo("Suppressing upload of deletes!")
         } else {
             DDLogInfo("NOT Suppressing upload of deletes!")
@@ -880,7 +880,7 @@ private class HealthKitUploadHelper: HealthKitSampleUploaderDelegate, HealthKitU
             DDLogVerbose("Count of samples to upload: \(validatedSamples.count)")
             DDLogInfo("Start next upload for \(self.samplesToUpload.count) samples, and \(self.deletesToUpload.count) deleted samples. (\(self.mode))")
 
-            try self.uploader.startUploadSessionTasks(with: self.samplesToUpload, deletes: self.config!.supressUploadDeletes() ? [] : self.deletesToUpload, simulate: config!.simulateUpload(), includeSensitiveInfo: config!.includeSensitiveInfo(), requestTimeoutInterval: self.requestTimeoutInterval)
+            try self.uploader.startUploadSessionTasks(with: self.samplesToUpload, deletes: self.config!.supressUploadDeletes() || self.mode == .HistoricalAll ? [] : self.deletesToUpload, simulate: config!.simulateUpload(), includeSensitiveInfo: config!.includeSensitiveInfo(), requestTimeoutInterval: self.requestTimeoutInterval)
         } catch let error {
             DDLogError("Failed to prepare upload (\(self.mode)). Error: \(String(describing: error))")
             self.stopUploading(reason: .error(error: error))
