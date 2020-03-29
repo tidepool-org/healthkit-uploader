@@ -46,7 +46,7 @@ class HealthKitUploader: NSObject, URLSessionDelegate, URLSessionTaskDelegate, U
     private var includeSensitiveInfo: Bool = false
 
     // NOTE: This is called from a query results handler, not on main thread
-  func startUploadSessionTasks(with samples: [[String: AnyObject]], deletes: [[String: AnyObject]], simulate: Bool, includeSensitiveInfo: Bool, requestTimeoutInterval: TimeInterval) throws {
+    func startUploadSessionTasks(with samples: [[String: AnyObject]], deletes: [[String: AnyObject]], simulate: Bool, includeSensitiveInfo: Bool, requestTimeoutInterval: TimeInterval) throws {
         DDLogVerbose("mode: \(mode.rawValue)")
       
         self.includeSensitiveInfo = includeSensitiveInfo

@@ -27,6 +27,8 @@ class HKGlobalSettings {
     var currentStartDate: HKSettingDate
     var hasPendingCurrentUploads: HKSettingBool
     var lastSuccessfulCurrentUploadTime: HKSettingDate
+    var currentUploadEarliestSampleTime: HKSettingDate
+    var currentUploadLatestSampleTime: HKSettingDate
     var currentTotalSamplesUploadCount: HKSettingInt
     var currentTotalDeletesUploadCount: HKSettingInt
     var historicalTotalSamplesUploadCount: HKSettingInt
@@ -36,8 +38,8 @@ class HKGlobalSettings {
     var historicalIsResumable: HKSettingBool
 
     func currentProgress() -> TPUploaderGlobalStats {
-        DDLogVerbose("HKGlobalSettings lastUpload: \(String(describing: lastSuccessfulCurrentUploadTime.value)), current historical day: \(historicalCurrentDay.value), total historical days: \(historicalTotalDays.value)")
-        return TPUploaderGlobalStats(lastUpload: lastSuccessfulCurrentUploadTime.value, totalHistDays: historicalTotalDays.value, currentHistDay: historicalCurrentDay.value, totalHistSamples: historicalTotalSamplesUploadCount.value, totalHistDeletes: historicalTotalDeletesUploadCount.value, totalCurSamples: currentTotalSamplesUploadCount.value, totalCurDeletes: currentTotalDeletesUploadCount.value)
+        DDLogVerbose("HKGlobalSettings lastUpload: \(String(describing: lastSuccessfulCurrentUploadTime.value)), current historical day: \(historicalCurrentDay.value), total historical days: \(historicalTotalDays.value), earliest sample time: \(String(describing: currentUploadEarliestSampleTime.value)), latest sample time: \(String(describing: currentUploadLatestSampleTime.value))")
+        return TPUploaderGlobalStats(lastUpload: lastSuccessfulCurrentUploadTime.value, totalHistDays: historicalTotalDays.value, currentHistDay: historicalCurrentDay.value, totalHistSamples: historicalTotalSamplesUploadCount.value, totalHistDeletes: historicalTotalDeletesUploadCount.value, totalCurSamples: currentTotalSamplesUploadCount.value, totalCurDeletes: currentTotalDeletesUploadCount.value, earliestSampleTimeCurrent: currentUploadEarliestSampleTime.value, latestSampleTimeCurrent: currentUploadLatestSampleTime.value, currentStartDate: currentStartDate.value)
     }
     
     func resetAll() {
@@ -78,6 +80,8 @@ class HKGlobalSettings {
         self.currentStartDate = HKSettingDate(key: "currentStartDateKey")
         self.hasPendingCurrentUploads = HKSettingBool(key: "hasPendingCurrentUploadsKey")
         self.lastSuccessfulCurrentUploadTime = HKSettingDate(key: "lastSuccessfulCurrentUploadTime")
+        self.currentUploadEarliestSampleTime = HKSettingDate(key: "currentUploadEarliestSampleTime")
+        self.currentUploadLatestSampleTime = HKSettingDate(key: "currentUploadLatestSampleTime")
         self.currentTotalSamplesUploadCount = HKSettingInt(key: "currentTotalSamplesUploadCount")
         self.currentTotalDeletesUploadCount = HKSettingInt(key: "currentTotalDeletesUploadCount")
         self.historicalTotalSamplesUploadCount = HKSettingInt(key: "historicalTotalSamplesUploadCount")
@@ -109,6 +113,8 @@ class HKGlobalSettings {
             self.currentStartDate,
             self.hasPendingCurrentUploads,
             self.lastSuccessfulCurrentUploadTime,
+            self.currentUploadEarliestSampleTime,
+            self.currentUploadLatestSampleTime,
             self.currentTotalSamplesUploadCount,
             self.currentTotalDeletesUploadCount
         ]

@@ -34,7 +34,7 @@ class HealthKitUploadManager:
         super.init()
 
         // Reset persistent uploader state if uploader version is upgraded in a way that breaks persistent state, or if we have a reason to force all users to reupload
-        let latestUploaderVersion = 9
+        let latestUploaderVersion = 10
         let lastExecutedUploaderVersion = settings.lastExecutedUploaderVersion.value
         DDLogVerbose("Uploader version: (latestUploaderVersion)")
         if latestUploaderVersion != lastExecutedUploaderVersion {
@@ -153,6 +153,7 @@ private class HealthKitUploadHelper: HealthKitSampleUploaderDelegate, HealthKitU
     private(set) var readers: [HealthKitUploadReader] = []
     private var uploader: HealthKitUploader
     private(set) var isUploading: Bool = false
+    private(set) var isRetry: Bool = false
     private var startTime: Date = Date()
     private(set) var uploadLimitsIndex: Int = 0
     private var didResetUploadAttemptsRemaining: Bool = false
@@ -293,6 +294,7 @@ private class HealthKitUploadHelper: HealthKitSampleUploaderDelegate, HealthKitU
         DDLogInfo("Start uploading, uploadLimitsIndex: \(uploadLimitsIndex), isRetry: \(uploadLimitsIndex > 0)")
 
         self.isUploading = true
+        self.isRetry = isRetry
         self.startTime = Date()
         self.config = config
         self.samplesUploadLimits = samplesUploadLimits
@@ -500,8 +502,10 @@ private class HealthKitUploadHelper: HealthKitSampleUploaderDelegate, HealthKitU
                 self.uploadLimitsIndex = self.uploadLimitsIndex + 1
             }            
             DDLogInfo("Will retry! Mode: \(mode), uploadLimitsIndex: \(uploadLimitsIndex + 1), max uploadLimitsIndex: \(self.samplesUploadLimits.count - 1)")
-            self.startUploading(config: self.config!, currentUserId: self.config!.currentUserId()!, samplesUploadLimits: self.config!.samplesUploadLimits(), deletesUploadLimits: self.config!.deletesUploadLimits(), uploaderTimeouts: self.config!.uploaderTimeouts(), uploadLimitsIndex: self.uploadLimitsIndex, uploadAttemptsRemaining: self.uploadAttemptsRemaining, isRetry: true)
-            postNotifications([TPUploaderNotifications.Updated, TPUploaderNotifications.UploadRetry], mode: mode, reason: reason)
+            DispatchQueue.main.async {
+                self.startUploading(config: self.config!, currentUserId: self.config!.currentUserId()!, samplesUploadLimits: self.config!.samplesUploadLimits(), deletesUploadLimits: self.config!.deletesUploadLimits(), uploaderTimeouts: self.config!.uploaderTimeouts(), uploadLimitsIndex: self.uploadLimitsIndex, uploadAttemptsRemaining: self.uploadAttemptsRemaining, isRetry: true)
+                self.postNotifications([TPUploaderNotifications.Updated, TPUploaderNotifications.UploadRetry], mode: self.mode, reason: reason)
+            }
         } else {
             if mode == .Current {
                 DDLogInfo("Stopped uploading, mode: \(mode), \(String(describing: reason)), total samples: \(self.settings.currentTotalSamplesUploadCount.value), total deletes: \(self.settings.currentTotalDeletesUploadCount.value)")
@@ -654,6 +658,8 @@ private class HealthKitUploadHelper: HealthKitSampleUploaderDelegate, HealthKitU
             // Update global total samples and deletes counts (across all reader tpes)
             var currentTotalSamplesUploadCount = 0
             var currentTotalDeletesUploadCount = 0
+            var currentUploadEarliestSampleTime: Date? = self.settings.currentUploadEarliestSampleTime.value
+            var currentUploadLatestSampleTime: Date? = self.settings.currentUploadLatestSampleTime.value
             var historicalTotalSamplesUploadCount = 0
             var historicalTotalDeletesUploadCount = 0
             var totalDaysHistorical = 0
@@ -662,6 +668,16 @@ private class HealthKitUploadHelper: HealthKitSampleUploaderDelegate, HealthKitU
                 if reader.mode == .Current {
                     currentTotalSamplesUploadCount += reader.readerSettings.totalSamplesUploadCount.value
                     currentTotalDeletesUploadCount += reader.readerSettings.totalDeletesUploadCount.value
+                    if let lastSuccessfulUploadEarliestSampleTime = reader.readerSettings.lastSuccessfulUploadEarliestSampleTime.value {
+                        if currentUploadEarliestSampleTime == nil || lastSuccessfulUploadEarliestSampleTime < currentUploadEarliestSampleTime! {
+                            currentUploadEarliestSampleTime = lastSuccessfulUploadEarliestSampleTime
+                        }
+                    }
+                    if let lastSuccessfulUploadLatestSampleTime = reader.readerSettings.lastSuccessfulUploadLatestSampleTime.value {
+                        if currentUploadLatestSampleTime == nil || lastSuccessfulUploadLatestSampleTime > currentUploadLatestSampleTime! {
+                            currentUploadLatestSampleTime = lastSuccessfulUploadLatestSampleTime
+                        }
+                    }
                 } else {
                     historicalTotalSamplesUploadCount += reader.readerSettings.totalSamplesUploadCount.value
                     historicalTotalDeletesUploadCount += reader.readerSettings.totalDeletesUploadCount.value
@@ -672,6 +688,8 @@ private class HealthKitUploadHelper: HealthKitSampleUploaderDelegate, HealthKitU
             if self.mode == .Current {
                 self.settings.currentTotalSamplesUploadCount.value = currentTotalSamplesUploadCount
                 self.settings.currentTotalDeletesUploadCount.value = currentTotalDeletesUploadCount
+                self.settings.currentUploadEarliestSampleTime.value = currentUploadEarliestSampleTime
+                self.settings.currentUploadLatestSampleTime.value = currentUploadLatestSampleTime
                 DDLogInfo("total upload samples: \(currentTotalSamplesUploadCount), deletes: \(currentTotalDeletesUploadCount) (\(self.mode))")
             } else {
                 self.settings.historicalTotalSamplesUploadCount.value = historicalTotalSamplesUploadCount
@@ -680,8 +698,6 @@ private class HealthKitUploadHelper: HealthKitSampleUploaderDelegate, HealthKitU
                 self.settings.historicalCurrentDay.value = max(self.settings.historicalCurrentDay.value, currentDayHistorical)
                 DDLogInfo("total upload samples: \(historicalTotalSamplesUploadCount), deletes: \(historicalTotalDeletesUploadCount) (\(self.mode))")
             }
-
-            self.resetForNextBatch()
 
             // If we have successfully uploaded, then go back one limit in the limits array
             self.didResetUploadAttemptsRemaining = false
@@ -692,14 +708,17 @@ private class HealthKitUploadHelper: HealthKitSampleUploaderDelegate, HealthKitU
                     reader.sampleReadLimit = self.samplesUploadLimits[self.uploadLimitsIndex]
                 }
                 self.requestTimeoutInterval = (TimeInterval)(self.uploaderTimeouts[self.uploadLimitsIndex])
+            }
+            if self.isRetry {
                 // For successful upload due to retry, just send .UploadRetry (so listeners can maintain state relative to retry attempts/successes
                 self.postNotifications([TPUploaderNotifications.Updated, TPUploaderNotifications.UploadRetry], mode: self.mode)
             } else {
                 self.postNotifications([TPUploaderNotifications.Updated, TPUploaderNotifications.UploadSuccessful], mode: self.mode)
             }
 
+            self.isRetry = false
             self.checkBackgroundTimeRemaining()
-          
+            self.resetForNextBatch()
             if self.isUploading {
                 self.checkStartNextSampleReads()
             }
@@ -853,7 +872,5 @@ private class HealthKitUploadHelper: HealthKitSampleUploaderDelegate, HealthKitU
             self.stopUploading(reason: .error(error: error))
         }
     }
-
-
 }
 

@@ -16,7 +16,7 @@
 import Foundation
 
 public struct TPUploaderGlobalStats {
-    init(lastUpload: Date?, totalHistDays: Int, currentHistDay: Int, totalHistSamples: Int, totalHistDeletes: Int, totalCurSamples: Int, totalCurDeletes: Int) {
+    init(lastUpload: Date?, totalHistDays: Int, currentHistDay: Int, totalHistSamples: Int, totalHistDeletes: Int, totalCurSamples: Int, totalCurDeletes: Int, earliestSampleTimeCurrent: Date?, latestSampleTimeCurrent: Date?, currentStartDate: Date?) {
         self.lastSuccessfulCurrentUploadTime = lastUpload
         self.currentDayHistorical = currentHistDay
         self.totalDaysHistorical = totalHistDays
@@ -24,6 +24,9 @@ public struct TPUploaderGlobalStats {
         self.totalDeletesHistorical = totalHistDeletes
         self.totalSamplesCurrent = totalCurSamples
         self.totalDeletesCurrent = totalCurDeletes
+        self.currentUploadEarliestSampleTime = earliestSampleTimeCurrent
+        self.currentUploadLatestSampleTime = latestSampleTimeCurrent
+        self.currentStartDate = currentStartDate
     }
     
     // Stats for uploading current samples:
@@ -42,4 +45,10 @@ public struct TPUploaderGlobalStats {
     public var totalSamplesCurrent = 0
     /// The total number of current deletes uploaded across all types
     public var totalDeletesCurrent = 0
+    /// The earliest sample time for current samples across all types
+    public var currentUploadEarliestSampleTime: Date? = nil
+    /// The latest sample time for current samples across all types
+    public var currentUploadLatestSampleTime: Date? = nil
+    /// The start date for current phase uploader
+    public var currentStartDate: Date? = nil
 }

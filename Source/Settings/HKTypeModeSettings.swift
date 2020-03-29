@@ -30,11 +30,11 @@ class HKTypeModeSettings {
     // Persistent settings
     var totalSamplesUploadCount: HKSettingInt
     var totalDeletesUploadCount: HKSettingInt
+    var lastSuccessfulUploadLatestSampleTime: HKSettingDate
+    var lastSuccessfulUploadEarliestSampleTime: HKSettingDate
     var startDateHistoricalSamples: HKSettingDate
     var endDateHistoricalSamples: HKSettingDate
     var lastSuccessfulUploadTime: HKSettingDate
-    var lastSuccessfulUploadLatestSampleTime: HKSettingDate
-    var lastSuccessfulUploadEarliestSampleTime: HKSettingDate
     var historicalTotalDays: HKSettingInt
     var historicalCurrentDay: HKSettingInt
   
@@ -128,12 +128,15 @@ class HKTypeModeSettings {
         if self.lastUploadSamplesAttemptCount > 0 {
             self.totalSamplesUploadCountInBatch += self.lastUploadSamplesAttemptCount
             
-            if let lastUploadSamplesAttemptEarliestSampleTime = lastUploadSamplesAttemptEarliestSampleTime {
-                self.lastSuccessfulUploadEarliestSampleTimeInBatch = lastUploadSamplesAttemptEarliestSampleTime
+            if let lastUploadSamplesAttemptEarliestSampleTime = self.lastUploadSamplesAttemptEarliestSampleTime {
+                if self.lastSuccessfulUploadEarliestSampleTimeInBatch == nil || lastUploadSamplesAttemptEarliestSampleTime < self.lastSuccessfulUploadEarliestSampleTimeInBatch! {
+                    self.lastSuccessfulUploadEarliestSampleTimeInBatch = lastUploadSamplesAttemptEarliestSampleTime
+                }
             }
-            
-            if let lastUploadSamplesAttemptLatestSampleTime = lastUploadSamplesAttemptLatestSampleTime {
-                self.lastSuccessfulUploadLatestSampleTimeInBatch = lastUploadSamplesAttemptLatestSampleTime
+            if let lastUploadSamplesAttemptLatestSampleTime = self.lastUploadSamplesAttemptLatestSampleTime {
+                if self.lastSuccessfulUploadLatestSampleTimeInBatch == nil || lastUploadSamplesAttemptLatestSampleTime > self.lastSuccessfulUploadLatestSampleTimeInBatch! {
+                    self.lastSuccessfulUploadLatestSampleTimeInBatch = lastUploadSamplesAttemptLatestSampleTime
+                }
             }
           
             if mode == .HistoricalAll {
@@ -161,13 +164,16 @@ class HKTypeModeSettings {
         if self.totalSamplesUploadCountInBatch > 0 {
             self.totalSamplesUploadCount.value += self.totalSamplesUploadCountInBatch
             self.lastSuccessfulUploadTime.value = lastSuccessfulUploadTime
-            
-            if self.lastSuccessfulUploadEarliestSampleTimeInBatch != nil {
-                self.lastSuccessfulUploadEarliestSampleTime.value = self.lastSuccessfulUploadEarliestSampleTimeInBatch
+          
+            if let lastSuccessfulUploadEarliestSampleTimeInBatch = self.lastSuccessfulUploadEarliestSampleTimeInBatch {
+                if self.lastSuccessfulUploadEarliestSampleTime.value == nil || lastSuccessfulUploadEarliestSampleTimeInBatch < self.lastSuccessfulUploadEarliestSampleTime.value! {
+                    self.lastSuccessfulUploadEarliestSampleTime.value = lastSuccessfulUploadEarliestSampleTimeInBatch
+                }
             }
-            
-            if self.lastSuccessfulUploadLatestSampleTimeInBatch != nil {
-                self.lastSuccessfulUploadLatestSampleTime.value = self.lastSuccessfulUploadLatestSampleTimeInBatch
+            if let lastSuccessfulUploadLatestSampleTimeInBatch = self.lastSuccessfulUploadLatestSampleTimeInBatch {
+                if self.lastSuccessfulUploadLatestSampleTime.value == nil || lastSuccessfulUploadLatestSampleTimeInBatch > self.lastSuccessfulUploadLatestSampleTime.value! {
+                    self.lastSuccessfulUploadLatestSampleTime.value = lastSuccessfulUploadLatestSampleTimeInBatch
+                }
             }
           
             if mode == .HistoricalAll {
@@ -175,7 +181,7 @@ class HKTypeModeSettings {
                 self.historicalTotalDays.value = self.historicalTotalDaysInBatch
             }
                 
-            let message = "(\(self.mode),  \(self.typeName)) Successfully uploaded \(self.totalSamplesUploadCountInBatch) samples, upload time: \(String(describing: lastSuccessfulUploadTime)), earliest sample date: \(String(describing: self.lastSuccessfulUploadEarliestSampleTimeInBatch)), latest sample date: \(String(describing: self.lastSuccessfulUploadLatestSampleTimeInBatch))"
+            let message = "(\(self.mode),  \(self.typeName)) Successfully uploaded \(self.totalSamplesUploadCountInBatch) samples, upload time: \(String(describing: lastSuccessfulUploadTime)), earliest sample time: \(String(describing: self.lastSuccessfulUploadEarliestSampleTime.value)), latest sample time: \(String(describing: self.lastSuccessfulUploadLatestSampleTime.value))"
             DDLogInfo(message)
         }
       
@@ -211,11 +217,11 @@ class HKTypeModeSettings {
         
         self.totalSamplesUploadCount = HKSettingInt(key: prefixedKey("StatsTotalSamplesUploadCount"))
         self.totalDeletesUploadCount = HKSettingInt(key: prefixedKey("StatsTotalDeletesUploadCount"))
-        self.startDateHistoricalSamples = HKSettingDate(key: prefixedKey("StatsStartDateHistoricalSamplesKey"))
-        self.endDateHistoricalSamples = HKSettingDate(key: prefixedKey("StatsEndDateHistoricalSamplesKey"))
         self.lastSuccessfulUploadTime = HKSettingDate(key: prefixedKey("StatsLastSuccessfulUploadTimeKey"))
         self.lastSuccessfulUploadLatestSampleTime = HKSettingDate(key: prefixedKey("StatsLastSuccessfulUploadLatestSampleTimeKey"))
         self.lastSuccessfulUploadEarliestSampleTime = HKSettingDate(key: prefixedKey("StatsLastSuccessfulUploadEarliestSampleTimeKey"))
+        self.startDateHistoricalSamples = HKSettingDate(key: prefixedKey("StatsStartDateHistoricalSamplesKey"))
+        self.endDateHistoricalSamples = HKSettingDate(key: prefixedKey("StatsEndDateHistoricalSamplesKey"))
         self.historicalTotalDays = HKSettingInt(key: prefixedKey("StatsHistoricalTotalDays"))
         self.historicalCurrentDay = HKSettingInt(key: prefixedKey("StatsHistoricalCurrentDay"))
         self.queryAnchor = HKSettingAnchor(key: prefixedKey("QueryAnchorKey"))

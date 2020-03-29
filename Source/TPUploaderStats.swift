@@ -25,17 +25,14 @@ public struct TPUploaderStats {
     public let mode: TPUploader.Mode
     
     public var hasSuccessfullyUploaded = false
-    public var lastSuccessfulUploadTime: Date? = nil
-    
-    public var totalDaysHistorical = 0
-    public var currentDayHistorical = 0
-  
     public var totalSamplesUploadCount = 0
     public var totalDeletesUploadCount = 0
-
+    public var lastSuccessfulUploadTime: Date? = nil
     public var lastSuccessfulUploadEarliestSampleTime: Date? = nil
     public var lastSuccessfulUploadLatestSampleTime: Date? = nil
 
+    public var totalDaysHistorical = 0
+    public var currentDayHistorical = 0
     public var startDateHistoricalSamples: Date? = nil
     public var endDateHistoricalSamples: Date? = nil
 }
