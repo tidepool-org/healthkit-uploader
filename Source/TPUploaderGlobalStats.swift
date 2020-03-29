@@ -16,16 +16,18 @@
 import Foundation
 
 public struct TPUploaderGlobalStats {
-    init(lastUpload: Date?, totalHistDays: Int, currentHistDay: Int, totalHistSamples: Int, totalHistDeletes: Int, totalCurSamples: Int, totalCurDeletes: Int, earliestSampleTimeCurrent: Date?, latestSampleTimeCurrent: Date?, currentStartDate: Date?) {
+    init(lastUpload: Date?, totalHistDays: Int, currentHistDay: Int, totalHistSamples: Int, totalHistDeletes: Int, totalCurSamples: Int, totalCurDeletes: Int, currentUploadEarliestSampleTime: Date?, currentUploadLatestSampleTime: Date?, currentStartDate: Date?, historicalUploadEarliestSampleTime: Date?, historicalUploadLatestSampleTime: Date?) {
         self.lastSuccessfulCurrentUploadTime = lastUpload
         self.currentDayHistorical = currentHistDay
         self.totalDaysHistorical = totalHistDays
         self.totalSamplesHistorical = totalHistSamples
         self.totalDeletesHistorical = totalHistDeletes
+        self.historicalUploadEarliestSampleTime = historicalUploadEarliestSampleTime
+        self.historicalUploadLatestSampleTime = historicalUploadLatestSampleTime
         self.totalSamplesCurrent = totalCurSamples
         self.totalDeletesCurrent = totalCurDeletes
-        self.currentUploadEarliestSampleTime = earliestSampleTimeCurrent
-        self.currentUploadLatestSampleTime = latestSampleTimeCurrent
+        self.currentUploadEarliestSampleTime = currentUploadEarliestSampleTime
+        self.currentUploadLatestSampleTime = currentUploadLatestSampleTime
         self.currentStartDate = currentStartDate
     }
     
@@ -41,6 +43,10 @@ public struct TPUploaderGlobalStats {
     public var totalSamplesHistorical = 0
     /// The total number of historical deletes uploaded across all types
     public var totalDeletesHistorical = 0
+    /// The earliest sample time for historical samples across all types
+    public var historicalUploadEarliestSampleTime: Date? = nil
+    /// The latest sample time for historical samples across all types
+    public var historicalUploadLatestSampleTime: Date? = nil
     /// The total number of current samples uploaded across all types
     public var totalSamplesCurrent = 0
     /// The total number of current deletes uploaded across all types

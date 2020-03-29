@@ -662,6 +662,8 @@ private class HealthKitUploadHelper: HealthKitSampleUploaderDelegate, HealthKitU
             var currentUploadLatestSampleTime: Date? = self.settings.currentUploadLatestSampleTime.value
             var historicalTotalSamplesUploadCount = 0
             var historicalTotalDeletesUploadCount = 0
+            var historicalUploadEarliestSampleTime: Date? = self.settings.historicalUploadEarliestSampleTime.value
+            var historicalUploadLatestSampleTime: Date? = self.settings.historicalUploadLatestSampleTime.value
             var totalDaysHistorical = 0
             var currentDayHistorical = 0
             for reader in self.readers {
@@ -683,6 +685,16 @@ private class HealthKitUploadHelper: HealthKitSampleUploaderDelegate, HealthKitU
                     historicalTotalDeletesUploadCount += reader.readerSettings.totalDeletesUploadCount.value
                     totalDaysHistorical = max(totalDaysHistorical, reader.readerSettings.historicalTotalDays.value)
                     currentDayHistorical = max(currentDayHistorical, reader.readerSettings.historicalCurrentDay.value)
+                    if let lastSuccessfulUploadEarliestSampleTime = reader.readerSettings.lastSuccessfulUploadEarliestSampleTime.value {
+                        if historicalUploadEarliestSampleTime == nil || lastSuccessfulUploadEarliestSampleTime < historicalUploadEarliestSampleTime! {
+                            historicalUploadEarliestSampleTime = lastSuccessfulUploadEarliestSampleTime
+                        }
+                    }
+                    if let lastSuccessfulUploadLatestSampleTime = reader.readerSettings.lastSuccessfulUploadLatestSampleTime.value {
+                        if historicalUploadLatestSampleTime == nil || lastSuccessfulUploadLatestSampleTime > historicalUploadLatestSampleTime! {
+                            historicalUploadLatestSampleTime = lastSuccessfulUploadLatestSampleTime
+                        }
+                    }
                 }
             }
             if self.mode == .Current {
@@ -696,6 +708,8 @@ private class HealthKitUploadHelper: HealthKitSampleUploaderDelegate, HealthKitU
                 self.settings.historicalTotalDeletesUploadCount.value = historicalTotalDeletesUploadCount
                 self.settings.historicalTotalDays.value = totalDaysHistorical
                 self.settings.historicalCurrentDay.value = max(self.settings.historicalCurrentDay.value, currentDayHistorical)
+                self.settings.historicalUploadEarliestSampleTime.value = historicalUploadEarliestSampleTime
+                self.settings.historicalUploadLatestSampleTime.value = historicalUploadLatestSampleTime
                 DDLogInfo("total upload samples: \(historicalTotalSamplesUploadCount), deletes: \(historicalTotalDeletesUploadCount) (\(self.mode))")
             }
 
