@@ -53,9 +53,11 @@ class HealthKitUploadReader: NSObject {
     private(set) var uploadType: HealthKitUploadType
     private(set) var mode: TPUploader.Mode
     private(set) var isReading = false
+    private(set) var isRetry = false
     // Reader may be stopped externally by turning off the interface. Also will stop after each read finishes, when there are no results
     private(set) var stoppedReason: ReaderStoppedReason?
 
+    var config: TPUploaderConfigInfo?
     var currentUserId: String?
 
     private(set) var sortedSamples: [HKSample] = []
@@ -217,18 +219,13 @@ class HealthKitUploadReader: NSObject {
         }
     }  
     
-    func isFreshHistoricalUpload() -> Bool {
-        var result = false
-        if mode == TPUploader.Mode.HistoricalAll {
-            if readerSettings.startDateHistoricalSamples.value == nil {
-                result = true
-            }
-            DDLogVerbose("isFreshHistoricalUpload: \(result) (\(self.uploadType.typeName),\(self.mode))")
-        }
+    func isFresh() -> Bool {
+        let result = readerSettings.queryAnchor.value == nil
+        DDLogVerbose("isFresh: \(result) (\(self.uploadType.typeName),\(self.mode))")
         return result
     }
 
-    func startReading() {
+    func startReading(isRetry: Bool) {
         DDLogVerbose("HealthKitUploadReader (\(self.uploadType.typeName),\(self.mode))")
         
         guard !self.isReading else {
@@ -237,13 +234,13 @@ class HealthKitUploadReader: NSObject {
         }
         
         self.isReading = true
-        self.stoppedReason = nil
-        
-        if isFreshHistoricalUpload() {
-            // for historical upload, we need to figure out the earliest and latest samples
+        self.isRetry = isRetry
+        self.stoppedReason = nil        
+        if self.mode == .Current {
+          // For fresh historical upload, we need to figure out the earliest and latest samples first. If that completes successfully, we'll then kick off readMore
             self.updateHistoricalSamplesDateRangeFromHealthKitAsync()
         } else {
-            readMore()
+            self.readMore()
         }
     }
     
@@ -380,6 +377,8 @@ class HealthKitUploadReader: NSObject {
                 if !self.newOrDeletedSamplesWereDelivered {
                     DDLogVerbose("stop due to no results!")
                     stoppedReason = .withNoNewResults
+                } else {
+                    self.config?.logData(mode: self.mode, phase: HKDataLogPhase.read, isRetry: self.isRetry, samples: newSamples, deletes: deletedSamples)
                 }
             } else {
                 stoppedReason = .error
@@ -535,7 +534,7 @@ class HealthKitUploadReader: NSObject {
             // kick off a read to get the new samples...
             // TODO: but not if we haven't reached the end of initial .Current upload?
             DDLogInfo("sampleObservationQuery startReading!")
-            self.startReading()
+            self.startReading(isRetry: false)
         }
     }
 
