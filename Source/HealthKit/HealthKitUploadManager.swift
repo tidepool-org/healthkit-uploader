@@ -201,7 +201,7 @@ private class HealthKitUploadHelper: HealthKitSampleUploaderDelegate, HealthKitU
     private func gatherUploadSamples() {
         self.resetSamplesUploadBuffers()
       
-      // get readers that still have samples...
+        // get readers that still have samples...
         var readersWithSamples: [HealthKitUploadReader] = []
         for reader in readers {
             reader.resetSamplesAttemptStats()
@@ -240,8 +240,12 @@ private class HealthKitUploadHelper: HealthKitSampleUploaderDelegate, HealthKitU
                             self.lastSampleDate = nextSampleDate
                         }
                         self.firstSampleDate = nextSampleDate
+                    } else {
+                        DDLogInfo("nil sampleAsDict!")
                     }
-                }
+                } else {
+                  DDLogInfo("nil nextSample!")
+              }
             }
         } while nextReader != nil && samplesToUpload.count < samplesUploadLimits[uploadLimitsIndex]
         // let each reader note attempt progress...

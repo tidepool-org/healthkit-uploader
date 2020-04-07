@@ -98,8 +98,6 @@ class HealthKitUploadTypeBloodGlucose: HealthKitUploadType {
     }
 
     override func prepareDataForUpload(_ sample: HKSample) -> [String: AnyObject]? {
-        //DDLogInfo("blood glucose prepareDataForUpload")
-        //let dateFormatter = DateFormatter()
             if let quantitySample = sample as? HKQuantitySample {
                 var sampleToUploadDict = [String: AnyObject]()
                 let typeOfBGSample = determineTypeOfBG(quantitySample)

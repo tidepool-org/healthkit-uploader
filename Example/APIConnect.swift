@@ -95,15 +95,13 @@ class APIConnector {
 
     // Dictionary of servers and their base URLs
     let kServers = [
-        "Development" :  "https://dev-api.tidepool.org",
-        "Staging" :      "https://stg-api.tidepool.org",
-        "Integration" :  "https://int-api.tidepool.org",
+        "Development" :  "https://qa1.development.tidepool.org",
+        "Staging" :      "https://qa2.development.tidepool.org",
         "Production" :   "https://api.tidepool.org"
     ]
     let kSortedServerNames = [
         "Development",
         "Staging",
-        "Integration",
         "Production"
     ]
     fileprivate let kDefaultServerName = "Staging"

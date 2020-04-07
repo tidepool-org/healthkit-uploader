@@ -53,7 +53,7 @@ class SyncViewController: UIViewController {
         self.hkUploader.configure()
         configureForReachability()
 
-        hkEnableSwitch.isOn = hkUploader.healthKitInterfaceEnabledForCurrentUser()
+        hkEnableSwitch.isOn = hkUploader.isHealthKitInterfaceEnabledForCurrentUser()
         let notificationCenter = NotificationCenter.default
         notificationCenter.addObserver(self, selector: #selector(SyncViewController.handleStatsUpdatedNotification(_:)), name: Notification.Name(rawValue: TPUploaderNotifications.Updated), object: nil)
         notificationCenter.addObserver(self, selector: #selector(SyncViewController.handleTurnOffUploaderNotification(_:)), name: Notification.Name(rawValue: TPUploaderNotifications.TurnOffUploader), object: nil)
@@ -109,7 +109,7 @@ class SyncViewController: UIViewController {
     
     @IBAction func hkEnableSwitchChanged(_ sender: Any) {
         if hkEnableSwitch.isOn {
-            if hkUploader.healthKitInterfaceConfiguredForOtherUser() {
+            if hkUploader.isHealthKitInterfaceConfiguredForOtherUser() {
                 // use dialog to confirm delete with user!
                 let curHKUserName = hkUploader.curHKUserName() ?? ""
                 let titleString = "Are you sure?"
@@ -120,12 +120,12 @@ class SyncViewController: UIViewController {
                     return
                 }))
                 alert.addAction(UIAlertAction(title: "Change Account", style: .default, handler: { Void in
-                    self.hkUploader.enableHealthKitInterface()
+                    self.hkUploader.enableHealthKitInterfaceAndAuthorize()
                 }))
                 self.present(alert, animated: true, completion: nil)
 
             } else {
-                hkUploader.enableHealthKitInterface()
+                hkUploader.enableHealthKitInterfaceAndAuthorize()
             }
         } else {
             hkUploader.disableHealthKitInterface()
@@ -251,7 +251,7 @@ class SyncViewController: UIViewController {
                 DDLogInfo("Current day: \(stat.currentDayHistorical)")
                 DDLogInfo("Total days: \(stat.totalDaysHistorical)")
                 DDLogInfo("")
-                totalUploadCount += stat.totalUploadCount
+                totalUploadCount += stat.totalSamplesUploadCount
             }
             
             if let typeLabel = historicalProgressLabels[stat.typeName] {
@@ -259,7 +259,7 @@ class SyncViewController: UIViewController {
             }
             
             if let totalLabel = sampleTotalLabels[stat.typeName] {
-                totalLabel.text = "\(stat.totalUploadCount)"
+                totalLabel.text = "\(stat.totalSamplesUploadCount)"
             }
         }
         let progress = hkUploader.uploaderProgress()
