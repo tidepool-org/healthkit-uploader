@@ -69,8 +69,9 @@ class HealthKitConfiguration
             // set flag to prevent reentrancy!
             turningOnHKInterface = true
             DDLogInfo("Turning on HK interface")
+            self.settings.interfaceTurnedOffError.value = ""
             config.onTurningOnInterface()
-          
+
             if shouldAuthorize {
                 authorizeHealthKit()
                 if !HealthKitManager.sharedInstance.isHealthKitAuthorized {
@@ -111,6 +112,7 @@ class HealthKitConfiguration
         }
       
         self.isInterfaceOn = true
+        self.settings.interfaceTurnedOffError.value = ""
         config.onTurnOnInterface();
 
         let hkManager = HealthKitUploadManager.sharedInstance
@@ -118,9 +120,8 @@ class HealthKitConfiguration
             // Always start uploading TPUploader.Mode.Current samples when interface is turned on
             hkManager.startUploading(mode: TPUploader.Mode.Current, config: config)
 
-            // Resume uploading other samples too, if resumable
-            // TODO: uploader - Revisit this. Do we want even the non-current mode readers/uploads to resume automatically? Or should that be behind some explicit resume UI
-            hkManager.resumeUploadingIfResumable(config: config)
+            // Resume uploading historical
+            hkManager.resumeUploadingIfResumableOrPending(config: config)
             
             // Really just a one-time check to upload biological sex if Tidepool does not have it, but we can get it from HealthKit.
             TPUploaderServiceAPI.connector?.updateProfileBioSexCheck()
@@ -133,8 +134,8 @@ class HealthKitConfiguration
         DDLogVerbose("\(#function)")
 
         self.isInterfaceOn = false
+        self.settings.interfaceTurnedOffError.value = error?.localizedDescription ?? ""
         config.onTurnOffInterface(error);
-
         HealthKitUploadManager.sharedInstance.stopUploading(reason: TPUploader.StoppedReason.interfaceTurnedOff)
     }
 

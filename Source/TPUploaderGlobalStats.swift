@@ -16,7 +16,7 @@
 import Foundation
 
 public struct TPUploaderGlobalStats {
-    init(lastUpload: Date?, totalHistDays: Int, currentHistDay: Int, totalHistSamples: Int, totalHistDeletes: Int, totalCurSamples: Int, totalCurDeletes: Int, currentUploadEarliestSampleTime: Date?, currentUploadLatestSampleTime: Date?, currentStartDate: Date?, historicalUploadEarliestSampleTime: Date?, historicalUploadLatestSampleTime: Date?) {
+    init(lastUpload: Date?, totalHistDays: Int, currentHistDay: Int, totalHistSamples: Int, totalHistDeletes: Int, totalCurSamples: Int, totalCurDeletes: Int, currentUploadEarliestSampleTime: Date?, currentUploadLatestSampleTime: Date?, currentStartDate: Date?, historicalUploadEarliestSampleTime: Date?, historicalUploadLatestSampleTime: Date?, historicalTotalSamplesCount: Int) {
         self.lastSuccessfulCurrentUploadTime = lastUpload
         self.currentDayHistorical = currentHistDay
         self.totalDaysHistorical = totalHistDays
@@ -24,6 +24,7 @@ public struct TPUploaderGlobalStats {
         self.totalDeletesHistorical = totalHistDeletes
         self.historicalUploadEarliestSampleTime = historicalUploadEarliestSampleTime
         self.historicalUploadLatestSampleTime = historicalUploadLatestSampleTime
+        self.historicalTotalSamplesCount = historicalTotalSamplesCount
         self.totalSamplesCurrent = totalCurSamples
         self.totalDeletesCurrent = totalCurDeletes
         self.currentUploadEarliestSampleTime = currentUploadEarliestSampleTime
@@ -47,6 +48,8 @@ public struct TPUploaderGlobalStats {
     public var historicalUploadEarliestSampleTime: Date? = nil
     /// The latest sample time for historical samples across all types
     public var historicalUploadLatestSampleTime: Date? = nil
+    /// Thetotal count of historical samples to read at start of upload
+    public var historicalTotalSamplesCount: Int = 0
     /// The total number of current samples uploaded across all types
     public var totalSamplesCurrent = 0
     /// The total number of current deletes uploaded across all types

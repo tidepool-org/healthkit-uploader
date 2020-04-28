@@ -15,10 +15,11 @@ class HKGlobalSettings {
     var interfaceEnabled: HKSettingBool
     var interfaceUserId: HKSettingString
     var interfaceUserName: HKSettingString
+    var interfaceTurnedOffError: HKSettingString
     var hkDataUploadId: HKSettingString
     var lastExecutedUploaderVersion: HKSettingInt
     var hasPresentedSyncUI: HKSettingBool
-  
+
     // Other upload settings
     var historicalEndDate: HKSettingDate
     var historicalEarliestDate: HKSettingDate
@@ -33,14 +34,15 @@ class HKGlobalSettings {
     var currentTotalDeletesUploadCount: HKSettingInt
     var historicalTotalSamplesUploadCount: HKSettingInt
     var historicalTotalDeletesUploadCount: HKSettingInt
-    var historicalTotalDays: HKSettingInt
+    var historicalTotalDaysCount: HKSettingInt
     var historicalCurrentDay: HKSettingInt
     var historicalUploadEarliestSampleTime: HKSettingDate
     var historicalUploadLatestSampleTime: HKSettingDate
+    var historicalTotalSamplesCount: HKSettingInt
     var historicalIsResumable: HKSettingBool
 
     func currentProgress() -> TPUploaderGlobalStats {
-        return TPUploaderGlobalStats(lastUpload: lastSuccessfulCurrentUploadTime.value, totalHistDays: historicalTotalDays.value, currentHistDay: historicalCurrentDay.value, totalHistSamples: historicalTotalSamplesUploadCount.value, totalHistDeletes: historicalTotalDeletesUploadCount.value, totalCurSamples: currentTotalSamplesUploadCount.value, totalCurDeletes: currentTotalDeletesUploadCount.value, currentUploadEarliestSampleTime: currentUploadEarliestSampleTime.value, currentUploadLatestSampleTime: currentUploadLatestSampleTime.value, currentStartDate: currentStartDate.value, historicalUploadEarliestSampleTime: historicalUploadEarliestSampleTime.value, historicalUploadLatestSampleTime: historicalUploadLatestSampleTime.value)
+      return TPUploaderGlobalStats(lastUpload: lastSuccessfulCurrentUploadTime.value, totalHistDays: historicalTotalDaysCount.value, currentHistDay: historicalCurrentDay.value, totalHistSamples: historicalTotalSamplesUploadCount.value, totalHistDeletes: historicalTotalDeletesUploadCount.value, totalCurSamples: currentTotalSamplesUploadCount.value, totalCurDeletes: currentTotalDeletesUploadCount.value, currentUploadEarliestSampleTime: currentUploadEarliestSampleTime.value, currentUploadLatestSampleTime: currentUploadLatestSampleTime.value, currentStartDate: currentStartDate.value, historicalUploadEarliestSampleTime: historicalUploadEarliestSampleTime.value, historicalUploadLatestSampleTime: historicalUploadLatestSampleTime.value, historicalTotalSamplesCount: historicalTotalSamplesCount.value)
     }
     
     func resetAll() {
@@ -68,6 +70,7 @@ class HKGlobalSettings {
     
     init() {
         self.interfaceEnabled = HKSettingBool(key: "kHealthKitInterfaceEnabledKey")
+        self.interfaceTurnedOffError = HKSettingString(key: "kinterfaceTurnedOffError")
         self.interfaceUserId = HKSettingString(key: "kUserIdForHealthKitInterfaceKey")
         self.interfaceUserName = HKSettingString(key: "kUserNameForHealthKitInterfaceKey")
         self.hkDataUploadId = HKSettingString(key: "kHKDataUploadIdKey")
@@ -89,8 +92,9 @@ class HKGlobalSettings {
         self.historicalTotalDeletesUploadCount = HKSettingInt(key: "historicalTotalDeletesUploadCount")
         self.historicalUploadEarliestSampleTime = HKSettingDate(key: "historicalUploadEarliestSampleTime")
         self.historicalUploadLatestSampleTime = HKSettingDate(key: "historicalUploadLatestSampleTime")
-        self.historicalTotalDays = HKSettingInt(key: "historicalTotalDays")
+        self.historicalTotalDaysCount = HKSettingInt(key: "historicalTotalDaysCount")
         self.historicalCurrentDay = HKSettingInt(key: "historicalCurrentDay")
+        self.historicalTotalSamplesCount = HKSettingInt(key: "historicalTotalSamplesCount")
         self.historicalIsResumable = HKSettingBool(key: "historicalIsResumable")
 
         // additional settings for global reset, used when switching HK user (all except lastExecutedUploaderVersion)
@@ -98,8 +102,9 @@ class HKGlobalSettings {
             self.interfaceEnabled,
             self.interfaceUserId,
             self.interfaceUserName,
+            self.interfaceTurnedOffError,
             self.hkDataUploadId,
-            self.hasPresentedSyncUI,
+            self.hasPresentedSyncUI
         ]
         self.historicalUploadSettings = [
             self.historicalEndDate,
@@ -108,10 +113,11 @@ class HKGlobalSettings {
             self.hasPendingHistoricalUploads,
             self.historicalTotalSamplesUploadCount,
             self.historicalTotalDeletesUploadCount,
-            self.historicalTotalDays,
+            self.historicalTotalDaysCount,
             self.historicalCurrentDay,
             self.historicalUploadEarliestSampleTime,
             self.historicalUploadLatestSampleTime,
+            self.historicalTotalSamplesCount,
             self.historicalIsResumable
         ]
         self.currentUploadSettings = [
@@ -123,7 +129,6 @@ class HKGlobalSettings {
             self.currentTotalSamplesUploadCount,
             self.currentTotalDeletesUploadCount
         ]
-
     }
     
     private var userSettings: [HKSettingType]

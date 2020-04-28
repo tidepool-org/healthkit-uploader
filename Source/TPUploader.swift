@@ -31,20 +31,22 @@ public class TPUploader {
         // These are uncommon and likely indicate misuse of the uploader api or something fatal
         case noHealthKit = -1
         case noBaseUrl = -2
-        case noSession = -3
-        case noSessionToken = -4
-        case noUploadId = -5
-        case noUploadUrl = -6
-        case noBody = -7
-        case noUser = -8
-        case noDSAUser = -9
-        case backgroundTimeExpiring = -10
-        case backgroundTimeExpired = -11
-        case applicationWillTerminate = -12
+        case noServiceConfigured = -3
+        case noSession = -4
+        case noSessionToken = -5
+        case noUploadId = -6
+        case noUploadUrl = -7
+        case noBody = -8
+        case noUser = -9
+        case noDSAUser = -10
+        case noFenceDate = -11
+        case backgroundTimeExpiring = -101
+        case backgroundTimeExpired = -102
+        case applicationWillTerminate = -103
       
         // Upload failures with these errors are possibly retryable, when conditions are favorable
-        case noNetwork = -101
-        case noProtectedHealthKitData = -102
+        case noNetwork = -201
+        case noProtectedHealthKitData = -202
         case unknownError = -999
         // NOTE: Positive value error codes are http response error codes, including 401, which usually means the sessionToken is expired! These are not mapped to specific enum values
     }
@@ -89,9 +91,69 @@ public class TPUploader {
     let hkConfig: HealthKitConfiguration
     
     //
+    // MARK: - public app lifecycle delegate methods
+    //
+
+    public func applicationWillEnterForeground(_ application: UIApplication) {
+        DDLogInfo("applicationWillEnterForeground")
+
+        if self.config.isConnectedToNetwork() {
+            if !isInterfaceOn() {
+                self.configure()
+            } else {
+                self.resumeUploadingIfResumableOrPending()
+            }
+
+            // Disable idle timer if there is a historical sync in progress
+            if self.isUploadInProgressForMode(TPUploader.Mode.HistoricalAll) {
+                DDLogVerbose("applicationWillEnterForeground disable idle timer")
+                UIApplication.shared.isIdleTimerDisabled = true
+            }
+        }
+    }
+  
+    public func applicationDidEnterBackground(_ application: UIApplication) {
+        DDLogVerbose("applicationDidEnterBackground")
+
+        // Re-enable idle timer when the app enters background. (May have been disabled during historical sync/upload.)
+        DDLogVerbose("applicationDidEnterBackground enable idle timer")
+        UIApplication.shared.isIdleTimerDisabled = false
+    }
+
+    public func applicationDidBecomeActive(_ application: UIApplication) {
+        DDLogVerbose("applicationDidBecomeActive")
+        // Occasionally log full date to help with deciphering logs!
+        let dateString = DateFormatter().isoStringFromDate(Date())
+        DDLogVerbose("Log Date: \(dateString)")
+    }
+  
+    public func applicationWillTerminate(_ application: UIApplication) {
+        DDLogVerbose("applicationWillTerminate")
+        
+        let message = "Stop upload due to applicationWillTerminate."
+        let error = NSError(domain: TPUploader.ErrorDomain, code: TPUploader.ErrorCodes.applicationWillTerminate.rawValue, userInfo: [NSLocalizedDescriptionKey: message])
+        DDLogInfo(message)
+        self.stopUploading(reason: .error(error: error))
+    }
+
+    public func applicationProtectedDataWillBecomeUnavailable(_ application: UIApplication) {
+        DDLogInfo("Device locked!")
+
+        // Stop historical upload since Health data will become unavailable. (Will resume again when available.)
+        let message = "Upload paused while device is locked."
+        let error = NSError(domain: TPUploader.ErrorDomain, code: TPUploader.ErrorCodes.noProtectedHealthKitData.rawValue, userInfo: [NSLocalizedDescriptionKey: message])
+        self.stopUploading(reason: .error(error: error))
+    }
+
+    public func applicationProtectedDataDidBecomeAvailable(_ application: UIApplication) {
+        DDLogInfo("Device unlocked!")
+        // NOTE: We will attempt to resume uploading in applicationWillEnterForeground
+    }
+
+    //
     // MARK: - public methods
     //
-    
+
     /**
      Call this whenever the current user changes, after login/logout, token refresh(?), connectivity changes, etc.
     */
@@ -209,11 +271,11 @@ public class TPUploader {
         hkUploadMgr.stopUploading(reason: reason)
     }
 
-    public func resumeUploadingIfResumable() {
+    public func resumeUploadingIfResumableOrPending() {
         if config.currentUserId() != nil {
-            hkUploadMgr.resumeUploadingIfResumable(config: config)
+            hkUploadMgr.resumeUploadingIfResumableOrPending(config: config)
         } else {
-            DDLogVerbose("ERR: resumeUploadingIfResumable ignored, no current user!")
+            DDLogVerbose("ERR: resumeUploadingIfResumableOrPending ignored, no current user!")
         }
     }
 
@@ -236,5 +298,13 @@ public class TPUploader {
             settings.hasPresentedSyncUI.value = newValue
         }
     }
-
+  
+    public var interfaceTurnedOffError: String {
+        get {
+            return settings.interfaceTurnedOffError.value ?? ""
+        }
+        set {
+            settings.interfaceTurnedOffError.value = newValue
+        }
+    }
 }
