@@ -314,13 +314,6 @@ private class HealthKitUploadHelper: HealthKitSampleUploaderDelegate, HealthKitU
         self.requestTimeoutInterval = (TimeInterval)(uploaderTimeouts[uploadLimitsIndex])
         self.isRetry = isRetry
       
-        // Reset historical reader settings if not resumable
-        if mode == .HistoricalAll && !settings.historicalIsResumable.value {
-            for reader in readers {
-                reader.resetPersistentStateOfReader()
-            }
-        }
-
         var isFresh = false
         for reader in readers {
             reader.config = config
@@ -330,13 +323,12 @@ private class HealthKitUploadHelper: HealthKitSampleUploaderDelegate, HealthKitU
         }
       
         if mode == .HistoricalAll {
-            if isFresh && !self.isUploading && !self.isHistoricalUploadPending {
+            if isFresh && !self.isHistoricalUploadPending {
+                for reader in readers {
+                    reader.resetPersistentStateOfReader()
+                }
                 settings.resetHistoricalUploadSettings()
             }
-            if self.historicalUploadStartTime == nil {
-                self.historicalUploadStartTime = Date()
-            }
-            self.settings.historicalIsResumable.value = true
         }
 
         let hkConfig = HealthKitConfiguration.sharedInstance!
@@ -353,6 +345,13 @@ private class HealthKitUploadHelper: HealthKitSampleUploaderDelegate, HealthKitU
         guard hkConfig.turningOnHKInterface || hkConfig.isInterfaceOn else {
             DDLogInfo("Interface is not turning on, or is not on, ignoring.")
             return
+        }
+      
+        if mode == .HistoricalAll {
+            if self.historicalUploadStartTime == nil {
+                self.historicalUploadStartTime = Date()
+            }
+            self.settings.historicalIsResumable.value = true
         }
 
         if mode == .HistoricalAll && isFresh {
@@ -474,6 +473,7 @@ private class HealthKitUploadHelper: HealthKitSampleUploaderDelegate, HealthKitU
             return
         }
 
+        let wasHistoricalUploadPending = self.isHistoricalUploadPending
         self.isUploading = false
         if mode == .Current {
             self.endSamplesUploadBackgroundTask()
@@ -508,7 +508,7 @@ private class HealthKitUploadHelper: HealthKitSampleUploaderDelegate, HealthKitU
         
         var shouldRetry = false
         var attemptsRemainingDelta = -1
-        if isConnectedToNetwork && error != nil {
+        if isConnectedToNetwork && error != nil && !wasHistoricalUploadPending {
             if error?.domain == TPUploader.ErrorDomain {
               switch error!.code {
                     case 500..<600:
@@ -522,17 +522,9 @@ private class HealthKitUploadHelper: HealthKitSampleUploaderDelegate, HealthKitU
                         break
                 }
             } else {
-                if error!.domain == NSURLErrorDomain {
-                    if error!.code != NSURLErrorCancelled {
-                        shouldRetry = true
-                    }
-                } else {
-                    // Retry other error domains
-                    shouldRetry = true
-                }
+                shouldRetry = true
             }
             if (shouldRetry) {
-                shouldRetry = true
                 if !self.didResetUploadAttemptsRemaining {
                     self.didResetUploadAttemptsRemaining = true
                     attemptsRemainingDelta = 1

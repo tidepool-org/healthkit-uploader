@@ -56,6 +56,7 @@ class HealthKitUploadReader: NSObject {
     private(set) var isReading = false
     private(set) var isRetry = false
     private(set) var isCountingHistoricalSamples = false
+    private var isCountingHistoricalSamplesToken: Int = 0
     // Reader may be stopped externally by turning off the interface. Also will stop after each read finishes, when there are no results
     private(set) var stoppedReason: ReaderStoppedReason?
 
@@ -310,19 +311,26 @@ class HealthKitUploadReader: NSObject {
       
         self.stoppedReason = nil
         self.isCountingHistoricalSamples = true
+        self.isCountingHistoricalSamplesToken += 1
+        let token = self.isCountingHistoricalSamplesToken
 
         let sampleType = uploadType.hkSampleType()!
         self.findHistoricalSampleDateRange(sampleType: sampleType) {
             (error: NSError?, startDate: Date?, endDate: Date?) in
             
             DispatchQueue.main.async {
+                guard token == self.isCountingHistoricalSamplesToken else {
+                    DDLogInfo("findHistoricalSampleDateRange: Token doesn't match, ignoring")
+                    return
+                }
+              
                 DDLogVerbose("HealthKitUploadReader [Main] error: \(String(describing: error)) start: \(String(describing: startDate)) end: \(String(describing: endDate)) (\(self.uploadType.typeName),\(self.mode))")
                 if error == nil, let startDate = startDate, let endDate = endDate {
                     self.readerSettings.updateForHistoricalSampleDateRange(startDate: startDate, endDate: endDate)
                     self.delegate?.uploadReader(reader: self, didUpdateHistoricalSampleDateRange: startDate, endDate: endDate)
 
                     let predicate = HKQuery.predicateForSamples(withStart: Date.distantPast, end: Date(), options: [])
-                    self.countHistoricalSamples(sampleType: sampleType, anchor: nil, predicate: predicate)
+                    self.countHistoricalSamples(sampleType: sampleType, anchor: nil, predicate: predicate, token: token)
                 } else {
                     // Set start and end to distantFuture date, to mark that findHistoricalSampleDateRange has been run, and show that no historical samples are available for this type.
                     let noSamplesDate = Date.distantFuture
@@ -473,9 +481,10 @@ class HealthKitUploadReader: NSObject {
         hkManager.healthStore?.execute(startDateSampleQuery)
     }
 
-    func countHistoricalSamples(sampleType: HKSampleType, anchor: HKQueryAnchor?, predicate: NSPredicate)
+    func countHistoricalSamples(sampleType: HKSampleType, anchor: HKQueryAnchor?, predicate: NSPredicate, token: Int)
     {
-        guard self.isCountingHistoricalSamples else {
+        guard token == self.isCountingHistoricalSamplesToken else {
+            DDLogInfo("countHistoricalSamples: Token doesn't match, ignoring")
             return
         }
 
@@ -489,7 +498,12 @@ class HealthKitUploadReader: NSObject {
           limit: limit) {
               (query, newSamples, deletedSamples, newAnchor, error) -> Void in
               if error == nil {
-                  var newSamplesCount = 0
+                  guard token == self.isCountingHistoricalSamplesToken else {
+                      DDLogInfo("countHistoricalSamples: Token doesn't match, ignoring")
+                      return
+                  }
+
+                var newSamplesCount = 0
                   if newSamples != nil {
                       newSamplesCount = newSamples!.count
                   }
@@ -497,8 +511,8 @@ class HealthKitUploadReader: NSObject {
                       DispatchQueue.main.async {
                         self.readerSettings.updateForHistoricalSampleCount(newSamplesCount)
                         self.delegate?.uploadReader(reader: self, didUpdateHistoricalSampleCount: newSamplesCount)
-
-                        self.countHistoricalSamples(sampleType: sampleType, anchor: newAnchor, predicate: predicate)
+                        
+                        self.countHistoricalSamples(sampleType: sampleType, anchor: newAnchor, predicate: predicate, token: token)
                       }
                   } else {
                     self.stopReading(self.readerSettings.historicalTotalSamplesCount.value > 0 ? .withResults : .withNoNewResults)
