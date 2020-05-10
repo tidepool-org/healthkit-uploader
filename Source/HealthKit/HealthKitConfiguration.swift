@@ -53,7 +53,7 @@ class HealthKitConfiguration
                 DDLogInfo("disable because not enabled for current user!")
             } else {
               DDLogInfo("enable because enabled for current user!")
-          }
+            }
         } else {
             interfaceEnabled = false
             DDLogInfo("disable because no current user!")
@@ -117,18 +117,8 @@ class HealthKitConfiguration
 
         let hkManager = HealthKitUploadManager.sharedInstance
         if config.currentUserId() != nil {
-            // Always start uploading TPUploader.Mode.Current samples when interface is turned on
-            hkManager.startUploading(mode: TPUploader.Mode.Current, config: config)
-
-            let state = UIApplication.shared.applicationState
-            if state != .background {
-                // Resume uploading historical
-                hkManager.resumeUploadingIfResumableOrPending(mode: .HistoricalAll, config: config)
-
-                // Really just a one-time check to upload biological sex if Tidepool does not have it, but we can get it from HealthKit.
-                TPUploaderServiceAPI.connector?.updateProfileBioSexCheck()
-            }
-        
+            hkManager.resumeUploadingIfResumableOrPending(config: config)            
+            TPUploaderServiceAPI.connector?.updateProfileBioSexCheck()
         } else {
             DDLogInfo("No logged in user, unable to start uploading")
         }

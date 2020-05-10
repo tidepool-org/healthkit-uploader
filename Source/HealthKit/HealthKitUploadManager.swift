@@ -114,12 +114,12 @@ class HealthKitUploadManager:
         self.stopUploading(mode: .HistoricalAll, reason: reason)
     }
 
-    func resumeUploadingIfResumableOrPending(mode: TPUploader.Mode, config: TPUploaderConfigInfo) {
+    func resumeUploadingIfResumableOrPending(config: TPUploaderConfigInfo) {
         DDLogVerbose("")
         self.config = config
         if TPUploaderServiceAPI.connector?.currentUploadId != nil {
-          let helper = mode == .Current ? currentHelper : historicalHelper
-          helper.resumeUploadingIfResumableOrPending(config: config, currentUserId: config.currentUserId(), samplesUploadLimits: config.samplesUploadLimits(), deletesUploadLimits: config.deletesUploadLimits(), uploaderTimeouts: config.uploaderTimeouts())
+          currentHelper.resumeUploadingIfResumableOrPending(config: config, currentUserId: config.currentUserId(), samplesUploadLimits: config.samplesUploadLimits(), deletesUploadLimits: config.deletesUploadLimits(), uploaderTimeouts: config.uploaderTimeouts())
+          historicalHelper.resumeUploadingIfResumableOrPending(config: config, currentUserId: config.currentUserId(), samplesUploadLimits: config.samplesUploadLimits(), deletesUploadLimits: config.deletesUploadLimits(), uploaderTimeouts: config.uploaderTimeouts())
         } else {
             DDLogError("Unable to resumeUploading - no currentUploadId available!")
         }
@@ -301,7 +301,7 @@ private class HealthKitUploadHelper: HealthKitSampleUploaderDelegate, HealthKitU
 
     func startUploading(config: TPUploaderConfigInfo, currentUserId: String, samplesUploadLimits: [Int], deletesUploadLimits: [Int], uploaderTimeouts: [Int], uploadLimitsIndex: Int = 0, uploadAttemptsRemaining: Int = 1, isRetry: Bool = false) {
         DDLogVerbose("(\(mode.rawValue))")
-
+          
         let wasUploading = self.isUploading
         guard !wasUploading || isRetry else {
             DDLogInfo("Already uploading, ignoring. (\(self.mode))")
@@ -312,7 +312,17 @@ private class HealthKitUploadHelper: HealthKitSampleUploaderDelegate, HealthKitU
             DDLogInfo("Still counting historical samples, ignoring. (\(self.mode))")
             return
         }
-      
+
+        let state = UIApplication.shared.applicationState
+        if mode == .HistoricalAll {
+            if state == .background {
+                let message = "Unable to start historical upload in background."
+                let error = NSError(domain: TPUploader.ErrorDomain, code: TPUploader.ErrorCodes.didEnterBackground.rawValue, userInfo: [NSLocalizedDescriptionKey: message])
+                self.stopUploading(reason: .error(error: error))
+                return
+            }
+        }
+
         self.config = config
         self.samplesUploadLimits = samplesUploadLimits
         self.deletesUploadLimits = deletesUploadLimits
@@ -394,7 +404,7 @@ private class HealthKitUploadHelper: HealthKitSampleUploaderDelegate, HealthKitU
         self.uploader.cancelTasks()
 
         // Ensure background task for current if we're in background
-        if self.mode == .Current && UIApplication.shared.applicationState == .background {
+        if self.mode == .Current && state == .background {
             self.beginSamplesUploadBackgroundTask()
         }
 

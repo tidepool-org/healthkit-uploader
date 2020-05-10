@@ -216,7 +216,7 @@ public class TPUploaderServiceAPI {
                     DDLogInfo(message)
                     completion(error)
                 } else {
-                  completion(nil)
+                    completion(nil)
                 }
             }
         } else {

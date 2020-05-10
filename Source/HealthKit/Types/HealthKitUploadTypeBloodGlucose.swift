@@ -135,7 +135,7 @@ class HealthKitUploadTypeBloodGlucose: HealthKitUploadType {
                         annotationValue = "high"
                         annotationThreshold = 400
                         // also set value to 401 as does the Tidepool Uploader...
-                      // TODO: validation - log this?
+                        // TODO: validation - log this?
                         value = 401
                     }
                     if let annotationCode = annotationCode,

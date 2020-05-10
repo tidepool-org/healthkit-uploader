@@ -94,20 +94,6 @@ public class TPUploader {
 
     public func applicationWillEnterForeground(_ application: UIApplication) {
         DDLogInfo("applicationWillEnterForeground")
-
-        if self.config.isConnectedToNetwork() {
-            if !isInterfaceOn() {
-                self.configure()
-            } else {
-                self.resumeUploadingIfResumableOrPending()
-            }
-
-            // Disable idle timer if there is a historical sync in progress
-            if self.isUploadInProgressForMode(TPUploader.Mode.HistoricalAll) {
-                DDLogVerbose("applicationWillEnterForeground disable idle timer")
-                UIApplication.shared.isIdleTimerDisabled = true
-            }
-        }
     }
   
     public func applicationDidEnterBackground(_ application: UIApplication) {
@@ -126,6 +112,20 @@ public class TPUploader {
     public func applicationDidBecomeActive(_ application: UIApplication) {
         DDLogVerbose("applicationDidBecomeActive")
         DDLogVerbose("Log Date: \(DateFormatter().isoStringFromDate(Date()))")
+      
+        if self.config.isConnectedToNetwork() {
+            if !isInterfaceOn() {
+                self.configure()
+            } else {
+                self.resumeUploadingIfResumableOrPending()
+            }
+
+            // Disable idle timer if there is a historical sync in progress
+            if self.isUploadInProgressForMode(TPUploader.Mode.HistoricalAll) {
+                DDLogVerbose("applicationWillEnterForeground disable idle timer")
+                UIApplication.shared.isIdleTimerDisabled = true
+            }
+        }
     }
   
     public func applicationWillTerminate(_ application: UIApplication) {
@@ -145,7 +145,14 @@ public class TPUploader {
     public func applicationProtectedDataDidBecomeAvailable(_ application: UIApplication) {
         DDLogInfo("Device unlocked!")
         DDLogVerbose("Log Date: \(DateFormatter().isoStringFromDate(Date()))")
-        // NOTE: We will attempt to resume uploading in applicationWillEnterForeground
+
+        if self.config.isConnectedToNetwork() {
+            if !isInterfaceOn() {
+                self.configure()
+            } else {
+                self.resumeUploadingIfResumableOrPending()
+            }
+        }
     }
 
     //
@@ -271,8 +278,7 @@ public class TPUploader {
 
     public func resumeUploadingIfResumableOrPending() {
         if config.currentUserId() != nil {
-            hkUploadMgr.resumeUploadingIfResumableOrPending(mode: .Current, config: config)
-            hkUploadMgr.resumeUploadingIfResumableOrPending(mode: .HistoricalAll, config: config)
+            hkUploadMgr.resumeUploadingIfResumableOrPending(config: config)
         } else {
             DDLogVerbose("ERR: resumeUploadingIfResumableOrPending ignored, no current user!")
         }
