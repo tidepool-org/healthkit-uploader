@@ -40,9 +40,8 @@ public class TPUploader {
         case noUser = -9
         case noDSAUser = -10
         case noFenceDate = -11
-        case backgroundTimeExpiring = -101
-        case backgroundTimeExpired = -102
-        case applicationWillTerminate = -103
+        case backgroundTimeExpiring = -102
+        case didEnterBackground = -103
       
         // Upload failures with these errors are possibly retryable, when conditions are favorable
         case noNetwork = -201
@@ -75,7 +74,6 @@ public class TPUploader {
             HealthKitUploadTypeBloodGlucose(),
             HealthKitUploadTypeCarb(),
             HealthKitUploadTypeInsulin(),
-            HealthKitUploadTypeWorkout(),
             ])
         self.hkUploadMgr = HealthKitUploadManager.sharedInstance
         self.hkMgr = HealthKitManager.sharedInstance
@@ -115,6 +113,11 @@ public class TPUploader {
     public func applicationDidEnterBackground(_ application: UIApplication) {
         DDLogVerbose("applicationDidEnterBackground")
 
+        // Stop historical uploader when entering background
+        let message = "Upload paused while in background."
+        let error = NSError(domain: TPUploader.ErrorDomain, code: TPUploader.ErrorCodes.didEnterBackground.rawValue, userInfo: [NSLocalizedDescriptionKey: message])
+        self.stopUploading(mode: .HistoricalAll, reason: .error(error: error))
+
         // Re-enable idle timer when the app enters background. (May have been disabled during historical sync/upload.)
         DDLogVerbose("applicationDidEnterBackground enable idle timer")
         UIApplication.shared.isIdleTimerDisabled = false
@@ -122,23 +125,17 @@ public class TPUploader {
 
     public func applicationDidBecomeActive(_ application: UIApplication) {
         DDLogVerbose("applicationDidBecomeActive")
-        // Occasionally log full date to help with deciphering logs!
-        let dateString = DateFormatter().isoStringFromDate(Date())
-        DDLogVerbose("Log Date: \(dateString)")
+        DDLogVerbose("Log Date: \(DateFormatter().isoStringFromDate(Date()))")
     }
   
     public func applicationWillTerminate(_ application: UIApplication) {
-        DDLogVerbose("applicationWillTerminate")
-        
-        let message = "Stop upload due to applicationWillTerminate."
-        let error = NSError(domain: TPUploader.ErrorDomain, code: TPUploader.ErrorCodes.applicationWillTerminate.rawValue, userInfo: [NSLocalizedDescriptionKey: message])
-        DDLogInfo(message)
-        self.stopUploading(reason: .error(error: error))
+        self.config.showLocalNotificationDebug(title: "Application will terminate", body: nil, sound: nil)
     }
 
     public func applicationProtectedDataWillBecomeUnavailable(_ application: UIApplication) {
         DDLogInfo("Device locked!")
-
+        DDLogVerbose("Log Date: \(DateFormatter().isoStringFromDate(Date()))")
+      
         // Stop historical upload since Health data will become unavailable. (Will resume again when available.)
         let message = "Upload paused while device is locked."
         let error = NSError(domain: TPUploader.ErrorDomain, code: TPUploader.ErrorCodes.noProtectedHealthKitData.rawValue, userInfo: [NSLocalizedDescriptionKey: message])
@@ -147,6 +144,7 @@ public class TPUploader {
 
     public func applicationProtectedDataDidBecomeAvailable(_ application: UIApplication) {
         DDLogInfo("Device unlocked!")
+        DDLogVerbose("Log Date: \(DateFormatter().isoStringFromDate(Date()))")
         // NOTE: We will attempt to resume uploading in applicationWillEnterForeground
     }
 
@@ -273,7 +271,8 @@ public class TPUploader {
 
     public func resumeUploadingIfResumableOrPending() {
         if config.currentUserId() != nil {
-            hkUploadMgr.resumeUploadingIfResumableOrPending(config: config)
+            hkUploadMgr.resumeUploadingIfResumableOrPending(mode: .Current, config: config)
+            hkUploadMgr.resumeUploadingIfResumableOrPending(mode: .HistoricalAll, config: config)
         } else {
             DDLogVerbose("ERR: resumeUploadingIfResumableOrPending ignored, no current user!")
         }

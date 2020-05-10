@@ -49,10 +49,6 @@ class HealthKitUploadType {
     }
 
     internal func prepareDataForDelete(_ deletedSample: HKDeletedObject) -> [String: AnyObject] {
-        if let metadata = deletedSample.metadata {
-            DDLogInfo("Metadata for deleted sample: \(String(describing:metadata)), for type: \(typeName), guid: \(deletedSample.uuid)")
-        }
-
         var sampleToDeleteDict = [String: AnyObject]()
         let origin: [String: AnyObject] = [
             "id": deletedSample.uuid.uuidString as AnyObject

@@ -16,12 +16,13 @@
 import Foundation
 
 public struct TPUploaderGlobalStats {
-    init(lastUpload: Date?, totalHistDays: Int, currentHistDay: Int, totalHistSamples: Int, totalHistDeletes: Int, totalCurSamples: Int, totalCurDeletes: Int, currentUploadEarliestSampleTime: Date?, currentUploadLatestSampleTime: Date?, currentStartDate: Date?, historicalUploadEarliestSampleTime: Date?, historicalUploadLatestSampleTime: Date?, historicalTotalSamplesCount: Int) {
+    init(lastUpload: Date?, totalHistDays: Int, currentHistDay: Int, totalHistSamples: Int, totalHistDeletes: Int, totalCurSamples: Int, totalCurDeletes: Int, currentUploadEarliestSampleTime: Date?, currentUploadLatestSampleTime: Date?, currentStartDate: Date?, historicalUploadEarliestSampleTime: Date?, historicalUploadLatestSampleTime: Date?, historicalEndDate: Date?, historicalTotalSamplesCount: Int) {
         self.lastSuccessfulCurrentUploadTime = lastUpload
         self.currentDayHistorical = currentHistDay
         self.totalDaysHistorical = totalHistDays
         self.totalSamplesHistorical = totalHistSamples
         self.totalDeletesHistorical = totalHistDeletes
+        self.historicalEndDate = historicalEndDate
         self.historicalUploadEarliestSampleTime = historicalUploadEarliestSampleTime
         self.historicalUploadLatestSampleTime = historicalUploadLatestSampleTime
         self.historicalTotalSamplesCount = historicalTotalSamplesCount
@@ -48,7 +49,9 @@ public struct TPUploaderGlobalStats {
     public var historicalUploadEarliestSampleTime: Date? = nil
     /// The latest sample time for historical samples across all types
     public var historicalUploadLatestSampleTime: Date? = nil
-    /// Thetotal count of historical samples to read at start of upload
+    /// The end date for historical phase uploader
+    public var historicalEndDate: Date? = nil
+    /// The total count of historical samples to read at start of upload
     public var historicalTotalSamplesCount: Int = 0
     /// The total number of current samples uploaded across all types
     public var totalSamplesCurrent = 0

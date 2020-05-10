@@ -63,9 +63,11 @@ public protocol TPUploaderConfigInfo {
     func logDebug(_ str: String)
   
     /// health data logging callbacks
-
     func openDataLogs(mode: TPUploader.Mode, isFresh: Bool)
     func logData(mode: TPUploader.Mode, phase: HKDataLogPhase, isRetry: Bool, samples: [HKSample]?, deletes: [HKDeletedObject]?)
     func logData(mode: TPUploader.Mode, phase: HKDataLogPhase, isRetry: Bool, samples: [[String: AnyObject]]?, deletes: [[String: AnyObject]]?)
+  
+    /// local notification debug support
+    func showLocalNotificationDebug(title: String, body: String?, sound: UNNotificationSound?)
 }
 

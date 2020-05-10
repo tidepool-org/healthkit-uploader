@@ -37,7 +37,7 @@ class HealthKitUploadReader: NSObject {
   
       self.uploadType = type
         self.mode = mode
-        sampleReadLimit = 500 // Will be overridden to correspond with upload limits
+        sampleReadLimit = 500
         self.readerSettings = HKTypeModeSettings(mode: mode, typeName: type.typeName)
 
         super.init()
@@ -48,7 +48,6 @@ class HealthKitUploadReader: NSObject {
     weak var delegate: HealthKitUploadReaderDelegate?
     let readerSettings: HKTypeModeSettings
     var queryAnchor: HKQueryAnchor?
-    // TODO: uploader - consider having read limits that coordinate better with upload limits so that we don't override. As it is now, the read limit is same as upload limit, but, we have four HK types that we read (four readers), so, we could be reading 4x what we need to, thus potentially buffering more samples per batch, and taking longer to complete the batch before potentially failing and entering retry.
     var sampleReadLimit: Int
     
     private(set) var uploadType: HealthKitUploadType
@@ -236,7 +235,7 @@ class HealthKitUploadReader: NSObject {
             DDLogVerbose("Ignoring request to start reading samples, already reading samples")
             return
         }
-        
+      
         self.stoppedReason = nil
         self.isReading = true
         self.isRetry = isRetry
@@ -351,7 +350,6 @@ class HealthKitUploadReader: NSObject {
     // NOTE: This is a HealthKit results handler, not called on main thread
     private func readResultsHandler(_ error: NSError?, newSamples: [HKSample]?, deletedSamples: [HKDeletedObject]?, newAnchor: HKQueryAnchor?) {
         DispatchQueue.main.async {
-            
             var debugStr = ""
             if let newSamples = newSamples {
                 debugStr = "newSamples: \(newSamples.count)"
@@ -497,29 +495,29 @@ class HealthKitUploadReader: NSObject {
           anchor: anchor,
           limit: limit) {
               (query, newSamples, deletedSamples, newAnchor, error) -> Void in
-              if error == nil {
-                  guard token == self.isCountingHistoricalSamplesToken else {
-                      DDLogInfo("countHistoricalSamples: Token doesn't match, ignoring")
-                      return
-                  }
+              DispatchQueue.main.async {
+                  if error == nil {
+                      guard token == self.isCountingHistoricalSamplesToken else {
+                          DDLogInfo("countHistoricalSamples: Token doesn't match, ignoring")
+                          return
+                      }
 
-                var newSamplesCount = 0
-                  if newSamples != nil {
-                      newSamplesCount = newSamples!.count
-                  }
-                  if newSamplesCount > 0 {
-                      DispatchQueue.main.async {
-                        self.readerSettings.updateForHistoricalSampleCount(newSamplesCount)
-                        self.delegate?.uploadReader(reader: self, didUpdateHistoricalSampleCount: newSamplesCount)
-                        
-                        self.countHistoricalSamples(sampleType: sampleType, anchor: newAnchor, predicate: predicate, token: token)
+                      var newSamplesCount = 0
+                      if newSamples != nil {
+                          newSamplesCount = newSamples!.count
+                      }
+                      if newSamplesCount > 0 {
+                          self.readerSettings.updateForHistoricalSampleCount(newSamplesCount)
+                          self.delegate?.uploadReader(reader: self, didUpdateHistoricalSampleCount: newSamplesCount)
+                          
+                          self.countHistoricalSamples(sampleType: sampleType, anchor: newAnchor, predicate: predicate, token: token)
+                      } else {
+                          self.stopReading(self.readerSettings.historicalTotalSamplesCount.value > 0 ? .withResults : .withNoNewResults)
                       }
                   } else {
-                    self.stopReading(self.readerSettings.historicalTotalSamplesCount.value > 0 ? .withResults : .withNoNewResults)
+                      DDLogError("Failed to update historical samples count, error: \(String(describing: error))")
+                      self.stopReading(.error(error: error!))
                   }
-              } else {
-                DDLogError("Failed to update historical samples count, error: \(String(describing: error))")
-                  self.stopReading(.error(error: error!))
               }
           }
         hkManager.healthStore?.execute(countQuery)
@@ -555,7 +553,6 @@ class HealthKitUploadReader: NSObject {
 
             observerQueryCompletion()
 
-            // TODO: background uploader - moved this after the observerQueryCompletion call, at least during debugging, so system doesn't turn off calls...
             self.sampleObservationHandler(error as NSError?)
             
         }
