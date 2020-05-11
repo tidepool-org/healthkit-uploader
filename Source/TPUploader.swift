@@ -74,6 +74,7 @@ public class TPUploader {
             HealthKitUploadTypeBloodGlucose(),
             HealthKitUploadTypeCarb(),
             HealthKitUploadTypeInsulin(),
+            HealthKitUploadTypeWorkout(),
             ])
         self.hkUploadMgr = HealthKitUploadManager.sharedInstance
         self.hkMgr = HealthKitManager.sharedInstance
