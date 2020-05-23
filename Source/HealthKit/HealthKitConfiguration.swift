@@ -154,7 +154,7 @@ class HealthKitConfiguration
         if !self.isHealthKitInterfaceEnabledForCurrentUser() {
             if self.isHealthKitInterfaceConfiguredForOtherUser() {
                 // Switching healthkit users, reset HealthKitUploadManager
-                HealthKitUploadManager.sharedInstance.resetPersistentState(switchingHealthKitUsers: true)
+              HealthKitUploadManager.sharedInstance.resetPersistentState(resetUserSettings: true)
                 // Also clear any persisted timezone data so an initial tz reading will be sent for this new user
                 TPTimeZoneTracker.tracker?.clearTzCache()
             }

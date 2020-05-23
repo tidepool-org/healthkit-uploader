@@ -34,13 +34,13 @@ class HealthKitUploadManager:
         super.init()
 
         // Reset persistent uploader state if uploader version is upgraded in a way that breaks persistent state, or if we have a reason to force all users to reupload
-        let latestUploaderVersion = 10
+        let latestUploaderVersion = 11
         let lastExecutedUploaderVersion = settings.lastExecutedUploaderVersion.value
         DDLogVerbose("Uploader version: (latestUploaderVersion)")
         if latestUploaderVersion != lastExecutedUploaderVersion {
             DDLogInfo("Migrating uploader from: \(lastExecutedUploaderVersion) to: \(latestUploaderVersion)")
             settings.lastExecutedUploaderVersion.value = latestUploaderVersion
-            self.resetPersistentState(switchingHealthKitUsers: false)
+            self.resetPersistentState(resetUserSettings: true)
         }
     }
     private var currentHelper: HealthKitUploadHelper
@@ -83,11 +83,11 @@ class HealthKitUploadManager:
         }
     }
 
-    func resetPersistentState(switchingHealthKitUsers: Bool) {
-        DDLogVerbose("switchingHealthKitUsers: \(switchingHealthKitUsers)")
+    func resetPersistentState(resetUserSettings: Bool) {
+        DDLogVerbose("resetUserSettings: \(resetUserSettings)")
         currentHelper.resetPersistentState()
         historicalHelper.resetPersistentState()
-        if switchingHealthKitUsers {
+        if resetUserSettings {
             settings.resetAll()
         }
     }

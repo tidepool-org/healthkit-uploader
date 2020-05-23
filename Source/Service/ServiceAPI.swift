@@ -162,7 +162,7 @@ public class TPUploaderServiceAPI {
     }
     
     /// Call this after fetching user profile, as part of configureHealthKitInterface, to ensure we have a dataset id for health data uploads (if so enabled).
-    /// - parameter completion: Method that will be called when this async operation has completed. If successful, currentUploadId in TidepoolMobileDataController will be set; if not, it will still be nil.
+    /// - parameter completion: Method that will be called when this async operation has completed.
     func configureUploadId(_ completion: @escaping (_ error: Error?) -> (Void)) {
         DDLogInfo("configureUploadId")
         if let userId = config.currentUserId() {
