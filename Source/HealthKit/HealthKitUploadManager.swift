@@ -161,6 +161,7 @@ private class HealthKitUploadHelper: HealthKitSampleUploaderDelegate, HealthKitU
     private(set) var uploadLimitsIndex: Int = 0
     private var didResetUploadAttemptsRemaining: Bool = false
     private var uploadAttemptsRemaining: Int = 1 // Number of upload attempts remaining at current index
+    private var uploadLimitsPayloadTooLargeIndex: Int = -1; // Upload limits index at which payload was too large (HTTP error 413)
     private(set) var samplesUploadLimits: [Int] = [500]
     private(set) var deletesUploadLimits: [Int] = [500]
     private(set) var uploaderTimeouts: [Int] = [60]
@@ -178,6 +179,7 @@ private class HealthKitUploadHelper: HealthKitSampleUploaderDelegate, HealthKitU
             reader.resetPersistentStateOfReader()
         }
         resetForNextBatch()
+        self.uploadLimitsPayloadTooLargeIndex = -1
     }
 
     private func resetForNextBatch() {
@@ -333,10 +335,13 @@ private class HealthKitUploadHelper: HealthKitSampleUploaderDelegate, HealthKitU
         self.isRetry = isRetry
       
         var isFresh = false
-        for reader in readers {
-            reader.config = config
-            if reader.isFresh() {
-                isFresh = true
+      
+        if !isRetry {
+            for reader in readers {
+                reader.config = config
+                if reader.isFresh() {
+                    isFresh = true
+                }
             }
         }
       
@@ -543,6 +548,14 @@ private class HealthKitUploadHelper: HealthKitSampleUploaderDelegate, HealthKitU
                         attemptsRemainingDelta = 2
                     }
                     break
+                case 413:
+                    shouldRetry = true
+                    if !self.didResetUploadAttemptsRemaining {
+                        self.uploadLimitsPayloadTooLargeIndex = self.uploadLimitsIndex
+                        self.didResetUploadAttemptsRemaining = true
+                        attemptsRemainingDelta = -1
+                    }
+                    break
                 default:
                     break
                 }
@@ -568,7 +581,7 @@ private class HealthKitUploadHelper: HealthKitSampleUploaderDelegate, HealthKitU
                 self.uploadAttemptsRemaining = 1
                 self.uploadLimitsIndex = self.uploadLimitsIndex + 1
             }            
-            DDLogInfo("Will retry! Mode: \(mode), uploadLimitsIndex: \(uploadLimitsIndex + 1), max uploadLimitsIndex: \(self.samplesUploadLimits.count - 1)")
+            DDLogInfo("Will retry! Mode: \(mode), uploadLimitsIndex: \(self.uploadLimitsIndex), max uploadLimitsIndex: \(self.samplesUploadLimits.count - 1)")
             DispatchQueue.main.async {
                 self.startUploading(config: self.config!, currentUserId: self.config!.currentUserId()!, samplesUploadLimits: self.config!.samplesUploadLimits(), deletesUploadLimits: self.config!.deletesUploadLimits(), uploaderTimeouts: self.config!.uploaderTimeouts(), uploadLimitsIndex: self.uploadLimitsIndex, uploadAttemptsRemaining: self.uploadAttemptsRemaining, isRetry: true)
                 self.postNotifications([TPUploaderNotifications.Updated, TPUploaderNotifications.UploadRetry], mode: self.mode, reason: reason)
@@ -813,11 +826,11 @@ private class HealthKitUploadHelper: HealthKitSampleUploaderDelegate, HealthKitU
             }
             DDLogVerbose("Log Date: \(DateFormatter().isoStringFromDate(Date()))")
 
-            // If we have successfully uploaded, then go back one limit in the limits array
+            // If we have successfully uploaded, then go back one limit in the limits array, but not farther back than where we've seen a 413 (payload too large)
             self.didResetUploadAttemptsRemaining = false
             self.uploadAttemptsRemaining = 1
             if self.uploadLimitsIndex > 0 {
-                self.uploadLimitsIndex = max(self.uploadLimitsIndex - 1, 0)
+                self.uploadLimitsIndex = max(self.uploadLimitsIndex - 1, self.uploadLimitsPayloadTooLargeIndex + 1)
             }
             if self.isRetry {
                 self.postNotifications([TPUploaderNotifications.Updated, TPUploaderNotifications.UploadRetry], mode: self.mode)
