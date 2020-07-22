@@ -85,7 +85,6 @@ public class TPUploaderServiceAPI {
         // Set our endpoint for the user profile
         // format is like: https://api.tidepool.org/metadata/f934a287c4/profile
         let urlExtension = "/metadata/" + userId + "/profile"
-        UIApplication.shared.isNetworkActivityIndicatorVisible = true
         DDLogInfo("fetchProfile endpoint: \(urlExtension)")
         sendRequest("GET", urlExtension: urlExtension, contentType: nil, completion: completion)
     }
@@ -148,10 +147,8 @@ public class TPUploaderServiceAPI {
             }
             // then repost!
             let urlExtension = "/metadata/" + userId + "/profile"
-        UIApplication.shared.isNetworkActivityIndicatorVisible = true
             self.sendRequest("POST", urlExtension: urlExtension, contentType: .json, body: body) {
                 (result: SendRequestResponse) -> (Void) in
-                UIApplication.shared.isNetworkActivityIndicatorVisible = false
                 if result.isSuccess() {
                     DDLogInfo("Posted updated profile successfully!")
                     completion(true)
@@ -165,7 +162,7 @@ public class TPUploaderServiceAPI {
     }
     
     /// Call this after fetching user profile, as part of configureHealthKitInterface, to ensure we have a dataset id for health data uploads (if so enabled).
-    /// - parameter completion: Method that will be called when this async operation has completed. If successful, currentUploadId in TidepoolMobileDataController will be set; if not, it will still be nil.
+    /// - parameter completion: Method that will be called when this async operation has completed.
     func configureUploadId(_ completion: @escaping (_ error: Error?) -> (Void)) {
         DDLogInfo("configureUploadId")
         if let userId = config.currentUserId() {
@@ -219,7 +216,7 @@ public class TPUploaderServiceAPI {
                     DDLogInfo(message)
                     completion(error)
                 } else {
-                  completion(nil)
+                    completion(nil)
                 }
             }
         } else {
@@ -238,10 +235,8 @@ public class TPUploaderServiceAPI {
         // Set our endpoint for the dataset fetch
         // format is: https://api.tidepool.org/v1/users/<user-id-here>/data_sets?client.name=tidepool.mobile&size=1"
         let urlExtension = "/v1/users/" + userId + "/data_sets?client.name=org.tidepool.mobile&size=1"
-        UIApplication.shared.isNetworkActivityIndicatorVisible = true
         sendRequest("GET", urlExtension: urlExtension, contentType: .urlEncoded) {
             (result: SendRequestResponse) -> (Void) in
-            UIApplication.shared.isNetworkActivityIndicatorVisible = false
             if result.isSuccess() {
                 let json = JSON(result.data!)
                 print("\(json)")
@@ -300,10 +295,8 @@ public class TPUploaderServiceAPI {
             return
         }
         
-        UIApplication.shared.isNetworkActivityIndicatorVisible = true
         sendRequest("POST", urlExtension: urlExtension, contentType: .json, body: body) {
             (result: SendRequestResponse) -> (Void) in
-            UIApplication.shared.isNetworkActivityIndicatorVisible = false
             if result.isSuccess() {
                 let json = JSON(result.data!)
                 var uploadId: String?
@@ -365,9 +358,8 @@ public class TPUploaderServiceAPI {
                 return
             }
             
-            UIApplication.shared.isNetworkActivityIndicatorVisible = true
             sendRequest("POST", urlExtension: urlExtension, contentType: .json, body: body) {
-               (result: SendRequestResponse) -> (Void) in UIApplication.shared.isNetworkActivityIndicatorVisible = false
+                (result: SendRequestResponse) -> (Void) in
                 if result.isSuccess() {
                     DDLogInfo("Timezone change upload succeeded!")
                     completion(lastTzUploaded)
@@ -458,11 +450,9 @@ public class TPUploaderServiceAPI {
             // make user-agent similar to that from Alamofire
             request.setValue(self.userAgentString(), forHTTPHeaderField: "User-Agent")
             
-            UIApplication.shared.isNetworkActivityIndicatorVisible = true
             let task = URLSession.shared.dataTask(with: request as URLRequest) {
                 (data, response, error) -> Void in
                 DispatchQueue.main.async(execute: {
-                    UIApplication.shared.isNetworkActivityIndicatorVisible = false
                     sendResponse.response = response
                     sendResponse.data = data
                     sendResponse.error = error as NSError?

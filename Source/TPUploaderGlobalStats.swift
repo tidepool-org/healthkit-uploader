@@ -16,14 +16,21 @@
 import Foundation
 
 public struct TPUploaderGlobalStats {
-    init(lastUpload: Date?, totalHistDays: Int, currentHistDay: Int, totalHistSamples: Int, totalHistDeletes: Int, totalCurSamples: Int, totalCurDeletes: Int) {
+    init(lastUpload: Date?, totalHistDays: Int, currentHistDay: Int, totalHistSamples: Int, totalHistDeletes: Int, totalCurSamples: Int, totalCurDeletes: Int, currentUploadEarliestSampleTime: Date?, currentUploadLatestSampleTime: Date?, currentStartDate: Date?, historicalUploadEarliestSampleTime: Date?, historicalUploadLatestSampleTime: Date?, historicalEndDate: Date?, historicalTotalSamplesCount: Int) {
         self.lastSuccessfulCurrentUploadTime = lastUpload
         self.currentDayHistorical = currentHistDay
         self.totalDaysHistorical = totalHistDays
         self.totalSamplesHistorical = totalHistSamples
         self.totalDeletesHistorical = totalHistDeletes
+        self.historicalEndDate = historicalEndDate
+        self.historicalUploadEarliestSampleTime = historicalUploadEarliestSampleTime
+        self.historicalUploadLatestSampleTime = historicalUploadLatestSampleTime
+        self.historicalTotalSamplesCount = historicalTotalSamplesCount
         self.totalSamplesCurrent = totalCurSamples
         self.totalDeletesCurrent = totalCurDeletes
+        self.currentUploadEarliestSampleTime = currentUploadEarliestSampleTime
+        self.currentUploadLatestSampleTime = currentUploadLatestSampleTime
+        self.currentStartDate = currentStartDate
     }
     
     // Stats for uploading current samples:
@@ -38,8 +45,22 @@ public struct TPUploaderGlobalStats {
     public var totalSamplesHistorical = 0
     /// The total number of historical deletes uploaded across all types
     public var totalDeletesHistorical = 0
+    /// The earliest sample time for historical samples across all types
+    public var historicalUploadEarliestSampleTime: Date? = nil
+    /// The latest sample time for historical samples across all types
+    public var historicalUploadLatestSampleTime: Date? = nil
+    /// The end date for historical phase uploader
+    public var historicalEndDate: Date? = nil
+    /// The total count of historical samples to read at start of upload
+    public var historicalTotalSamplesCount: Int = 0
     /// The total number of current samples uploaded across all types
     public var totalSamplesCurrent = 0
     /// The total number of current deletes uploaded across all types
     public var totalDeletesCurrent = 0
+    /// The earliest sample time for current samples across all types
+    public var currentUploadEarliestSampleTime: Date? = nil
+    /// The latest sample time for current samples across all types
+    public var currentUploadLatestSampleTime: Date? = nil
+    /// The start date for current phase uploader
+    public var currentStartDate: Date? = nil
 }

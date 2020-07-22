@@ -43,7 +43,6 @@ class HealthKitUploadTypeInsulin: HealthKitUploadType {
     }
 
     override func prepareDataForUpload(_ sample: HKSample) -> [String: AnyObject]? {
-            DDLogInfo("insulin prepareDataForUpload")
             if let quantitySample = sample as? HKQuantitySample {
                 
                 var sampleToUploadDict = [String: AnyObject]()

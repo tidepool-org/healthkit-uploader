@@ -53,7 +53,7 @@ class HealthKitConfiguration
                 DDLogInfo("disable because not enabled for current user!")
             } else {
               DDLogInfo("enable because enabled for current user!")
-          }
+            }
         } else {
             interfaceEnabled = false
             DDLogInfo("disable because no current user!")
@@ -69,8 +69,9 @@ class HealthKitConfiguration
             // set flag to prevent reentrancy!
             turningOnHKInterface = true
             DDLogInfo("Turning on HK interface")
+            self.settings.interfaceTurnedOffError.value = ""
             config.onTurningOnInterface()
-          
+
             if shouldAuthorize {
                 authorizeHealthKit()
                 if !HealthKitManager.sharedInstance.isHealthKitAuthorized {
@@ -111,18 +112,12 @@ class HealthKitConfiguration
         }
       
         self.isInterfaceOn = true
+        self.settings.interfaceTurnedOffError.value = ""
         config.onTurnOnInterface();
 
         let hkManager = HealthKitUploadManager.sharedInstance
         if config.currentUserId() != nil {
-            // Always start uploading TPUploader.Mode.Current samples when interface is turned on
-            hkManager.startUploading(mode: TPUploader.Mode.Current, config: config)
-
-            // Resume uploading other samples too, if resumable
-            // TODO: uploader - Revisit this. Do we want even the non-current mode readers/uploads to resume automatically? Or should that be behind some explicit resume UI
-            hkManager.resumeUploadingIfResumable(config: config)
-            
-            // Really just a one-time check to upload biological sex if Tidepool does not have it, but we can get it from HealthKit.
+            hkManager.resumeUploadingIfResumableOrPending(config: config)            
             TPUploaderServiceAPI.connector?.updateProfileBioSexCheck()
         } else {
             DDLogInfo("No logged in user, unable to start uploading")
@@ -133,8 +128,8 @@ class HealthKitConfiguration
         DDLogVerbose("\(#function)")
 
         self.isInterfaceOn = false
+        self.settings.interfaceTurnedOffError.value = error?.localizedDescription ?? ""
         config.onTurnOffInterface(error);
-
         HealthKitUploadManager.sharedInstance.stopUploading(reason: TPUploader.StoppedReason.interfaceTurnedOff)
     }
 
@@ -159,7 +154,7 @@ class HealthKitConfiguration
         if !self.isHealthKitInterfaceEnabledForCurrentUser() {
             if self.isHealthKitInterfaceConfiguredForOtherUser() {
                 // Switching healthkit users, reset HealthKitUploadManager
-                HealthKitUploadManager.sharedInstance.resetPersistentState(switchingHealthKitUsers: true)
+              HealthKitUploadManager.sharedInstance.resetPersistentState(resetUserSettings: true)
                 // Also clear any persisted timezone data so an initial tz reading will be sent for this new user
                 TPTimeZoneTracker.tracker?.clearTzCache()
             }

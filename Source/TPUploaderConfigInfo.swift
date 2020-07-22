@@ -14,6 +14,13 @@
  */
 
 import Foundation
+import HealthKit
+
+public enum HKDataLogPhase : CaseIterable {
+    case read
+    case gather
+    case upload
+}
 
 /// User of the TPHealthKitUploader framework must configure the framework passing an object with this protocol which the framework will use as documented below.
 public protocol TPUploaderConfigInfo {
@@ -54,5 +61,13 @@ public protocol TPUploaderConfigInfo {
     func logError(_ str: String)
     func logInfo(_ str: String)
     func logDebug(_ str: String)
+  
+    /// health data logging callbacks
+    func openDataLogs(mode: TPUploader.Mode, isFresh: Bool)
+    func logData(mode: TPUploader.Mode, phase: HKDataLogPhase, isRetry: Bool, samples: [HKSample]?, deletes: [HKDeletedObject]?)
+    func logData(mode: TPUploader.Mode, phase: HKDataLogPhase, isRetry: Bool, samples: [[String: AnyObject]]?, deletes: [[String: AnyObject]]?)
+  
+    /// local notification debug support
+    func showLocalNotificationDebug(title: String, body: String?, sound: UNNotificationSound?)
 }
 

@@ -18,6 +18,7 @@ public enum TPUploaderNotifications {
     public static let Updated = "HealthKitDataUpload-Updated"
     public static let UploadRetry = "HealthKitDataUpload-UploadRetry"
     public static let UploadSuccessful = "HealthKitDataUpload-UploadSuccessful"
+    public static let UploadHistoricalPending = "HealthKitDataUpload-UploadHistoricalPending"
     public static let TurnOnUploader = "HealthKitDataUpload-TurnOnUploader"
     public static let TurnOffUploader = "HealthKitDataUpload-TurnOffUploader"
 }

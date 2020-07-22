@@ -15,10 +15,50 @@
 
 import Foundation
 import CocoaLumberjack
+import HealthKit
 import TPHealthKitUploader
 
 /// The singleton of this class, accessed and initialized via TPUploaderAPI.connector(), initializes the uploader interface and provides it with the necessary callback functions.
 class TPUploaderAPI: TPUploaderConfigInfo {
+    func onTurningOnInterface() {
+    }
+    
+    func onTurnOffInterface(_ error: Error?) {
+    }
+    
+    func samplesUploadLimits() -> [Int] {
+        return [2000, 1000, 500, 250]
+    }
+    
+    func deletesUploadLimits() -> [Int] {
+        return [100, 50, 10, 1]
+    }
+    
+    func uploaderTimeouts() -> [Int] {
+        return [60, 90, 180, 300]
+    }
+    
+    func supressUploadDeletes() -> Bool {
+        return false
+    }
+    
+    func simulateUpload() -> Bool {
+        return false
+    }
+    
+    func includeSensitiveInfo() -> Bool {
+        return false
+    }
+    
+    func openDataLogs(mode: TPUploader.Mode, isFresh: Bool) {
+    }
+    
+    func logData(mode: TPUploader.Mode, phase: HKDataLogPhase, isRetry: Bool, samples: [HKSample]?, deletes: [HKDeletedObject]?) {
+    }
+    
+    func logData(mode: TPUploader.Mode, phase: HKDataLogPhase, isRetry: Bool, samples: [[String : AnyObject]]?, deletes: [[String : AnyObject]]?) {
+    }
+    
     
     static var _connector: TPUploaderAPI?
     /// Supports a singleton for the application.
