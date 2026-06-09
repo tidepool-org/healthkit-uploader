@@ -133,8 +133,9 @@ class HealthKitConfiguration
             // Resume uploading other samples too, if resumable
             // TODO: uploader - Revisit this. Do we want even the non-current mode readers/uploads to resume automatically? Or should that be behind some explicit resume UI
             hkManager.resumeUploadingIfResumable(config: config)
-            
-            // Bio-sex profile update is now the host app's responsibility
+
+            // Really just a one-time check to upload biological sex if Tidepool does not have it, but we can get it from HealthKit.
+            TPUploaderServiceAPIBridge.connector?.updateProfileBioSexCheck()
         } else {
             DDLogInfo("No logged in user, unable to start uploading")
         }

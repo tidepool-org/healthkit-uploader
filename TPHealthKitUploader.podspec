@@ -16,6 +16,6 @@ Pod::Spec.new do |spec|
   spec.source_files  = 'Source/*.swift', 'Source/*/*.swift', 'Source/*/*/*.swift'
   spec.swift_version = "5.9"
 
-  spec.dependency 'TidepoolKit'
+  spec.dependency 'TidepoolKit', '~> 1.0'
 
 end

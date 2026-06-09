@@ -14,6 +14,7 @@
  */
 
 import Foundation
+import HealthKit
 import TidepoolKit
 
 /// Main entry point for the HealthKit uploader framework.
@@ -211,29 +212,53 @@ class TPUploaderServiceAPIBridge: NSObject, TAPIObserver {
     }()
 
     private let api: TAPI
-    private let config: TPUploaderConfigInfo
+    // `var` (not `let`) so the settable `bioSex` property can be written back through the
+    // (non-class-bound) config existential during the biological-sex backfill.
+    private var config: TPUploaderConfigInfo
     private let defaults = UserDefaults.standard
     private let HKDataUploadIdKey = "kHKDataUploadIdKey"
     private let kSessionTokenHeaderId = "X-Tidepool-Session-Token"
 
-    /// Cached from TAPIObserver — used synchronously by makeDataUploadRequest.
-    private var cachedAccessToken: String?
-    /// Cached from TAPIObserver — used synchronously by makeDataUploadRequest.
-    private var cachedEnvironment: TEnvironment?
+    /// Serializes access to the cached session state and upload id. These are written from
+    /// the TAPIObserver callback (main queue) and the init seeding Task (cooperative executor),
+    /// and read during request construction. The lock makes those accesses safe regardless of
+    /// which queue the caller runs on.
+    private let cacheLock = NSLock()
+
+    /// Cached from TAPIObserver — read as an atomic snapshot via `cachedSession()`.
+    private var _cachedAccessToken: String?
+    /// Cached from TAPIObserver — read as an atomic snapshot via `cachedSession()`.
+    private var _cachedEnvironment: TEnvironment?
 
     var currentUploadId: String? {
         get {
+            cacheLock.lock()
+            defer { cacheLock.unlock() }
             if _currentUploadId == nil {
                 _currentUploadId = defaults.string(forKey: HKDataUploadIdKey)
             }
             return _currentUploadId
         }
         set {
+            cacheLock.lock()
+            defer { cacheLock.unlock() }
             defaults.setValue(newValue, forKey: HKDataUploadIdKey)
             _currentUploadId = newValue
         }
     }
     private var _currentUploadId: String?
+
+    /// Atomic snapshot of the cached access token + environment, so request construction never
+    /// pairs a token from one session with the environment of another. Returns nil until the
+    /// session has been observed/seeded.
+    private func cachedSession() -> (token: String, environment: TEnvironment)? {
+        cacheLock.lock()
+        defer { cacheLock.unlock() }
+        guard let token = _cachedAccessToken, let environment = _cachedEnvironment else {
+            return nil
+        }
+        return (token, environment)
+    }
 
     init(api: TAPI, config: TPUploaderConfigInfo) {
         self.api = api
@@ -241,22 +266,27 @@ class TPUploaderServiceAPIBridge: NSObject, TAPIObserver {
         super.init()
         TPUploaderServiceAPIBridge.connector = self
 
-        // Observe TAPI session changes to cache token/environment on main queue
+        // Observe TAPI session changes to cache token/environment. The observer fires on the
+        // main queue; only future changes are delivered, so seed the current session here too.
         Task {
             await api.addObserver(self, queue: .main)
-            // Seed cached values from current session
             let session = await api.session
-            self.cachedAccessToken = session?.accessToken
-            self.cachedEnvironment = session?.environment
+            cacheLock.lock()
+            _cachedAccessToken = session?.accessToken
+            _cachedEnvironment = session?.environment
+            cacheLock.unlock()
         }
     }
 
     // MARK: - TAPIObserver
 
     func apiDidUpdateSession(_ session: TSession?) {
-        // Called on main queue (specified in addObserver)
-        self.cachedAccessToken = session?.accessToken
-        self.cachedEnvironment = session?.environment
+        // Called on main queue (specified in addObserver). Update token + environment together
+        // under the lock so readers see a consistent pair.
+        cacheLock.lock()
+        _cachedAccessToken = session?.accessToken
+        _cachedEnvironment = session?.environment
+        cacheLock.unlock()
         DDLogInfo("TPUploaderServiceAPIBridge: session updated, token \(session != nil ? "present" : "nil")")
     }
 
@@ -322,14 +352,9 @@ class TPUploaderServiceAPIBridge: NSObject, TAPIObserver {
                           userInfo: [NSLocalizedDescriptionKey: "Unable to upload. No upload id is available."])
         }
 
-        guard let token = cachedAccessToken else {
+        guard let (token, environment) = cachedSession() else {
             throw NSError(domain: TPUploader.ErrorDomain, code: TPUploader.ErrorCodes.noSessionToken.rawValue,
-                          userInfo: [NSLocalizedDescriptionKey: "Unable to upload. No session token exists."])
-        }
-
-        guard let environment = cachedEnvironment else {
-            throw NSError(domain: TPUploader.ErrorDomain, code: TPUploader.ErrorCodes.noBaseUrl.rawValue,
-                          userInfo: [NSLocalizedDescriptionKey: "Unable to upload. No API environment available."])
+                          userInfo: [NSLocalizedDescriptionKey: "Unable to upload. No session token or API environment available."])
         }
 
         let path = "/v1/data_sets/\(uploadId)/data"
@@ -351,7 +376,7 @@ class TPUploaderServiceAPIBridge: NSObject, TAPIObserver {
             return
         }
 
-        guard let token = cachedAccessToken, let environment = cachedEnvironment else {
+        guard let (token, environment) = cachedSession() else {
             DDLogInfo("Timezone change upload fail: no session!")
             completion(nil)
             return
@@ -412,6 +437,121 @@ class TPUploaderServiceAPIBridge: NSObject, TAPIObserver {
             }
         }
         task.resume()
+    }
+
+    // MARK: - Profile biological sex backfill
+
+    /// Fill in the Tidepool patient's biological sex if it is missing and we can read it from HealthKit.
+    ///
+    /// Mirrors the legacy behavior: reads biological sex from HealthKit, then (if not already cached on
+    /// the config) fetches the raw profile, and — only when the patient record is present and has no
+    /// usable biologicalSex — merges the value in (preserving all other profile fields) and POSTs it back.
+    func updateProfileBioSexCheck() {
+        DDLogInfo("\(#function)")
+
+        // Already have it (or already backfilled this session) — nothing to do.
+        guard config.bioSex == nil else { return }
+
+        guard let healthStore = HealthKitManager.sharedInstance.healthStore else {
+            DDLogInfo("No HealthKit store available for bio-sex check")
+            return
+        }
+
+        let bioSexString: String
+        do {
+            let sex = try healthStore.biologicalSex()
+            guard sex.biologicalSex != .notSet else {
+                DDLogInfo("biological sex not set in HK!")
+                return
+            }
+            bioSexString = sex.biologicalSex.stringRepresentation
+        } catch {
+            DDLogInfo("throw from call for biologicalSex: not authorized?")
+            return
+        }
+
+        guard let userId = config.currentUserId() else { return }
+        DDLogInfo("biologicalSex is \(bioSexString)")
+
+        updateProfile(userId, biologicalSex: bioSexString) { [weak self] updateOk in
+            DDLogInfo("Result of profile update: \(updateOk)")
+            // Cache only on success so a transient failure can be retried next time.
+            if updateOk {
+                self?.config.bioSex = bioSexString
+            }
+        }
+    }
+
+    /// Fetches the raw profile JSON, and if the patient record exists and has no usable biologicalSex,
+    /// merges in `biologicalSex` (preserving every other field) and POSTs the merged profile back.
+    private func updateProfile(_ userId: String, biologicalSex: String, _ completion: @escaping (Bool) -> Void) {
+        guard let (token, environment) = cachedSession() else {
+            DDLogError("No session for profile update!")
+            completion(false)
+            return
+        }
+
+        let path = "/metadata/\(userId)/profile"
+        guard let url = try? environment.url(path: path) else {
+            DDLogError("Failed to construct URL for profile update!")
+            completion(false)
+            return
+        }
+
+        var getRequest = URLRequest(url: url)
+        getRequest.httpMethod = "GET"
+        getRequest.setValue(token, forHTTPHeaderField: kSessionTokenHeaderId)
+        getRequest.setValue(self.userAgentString(), forHTTPHeaderField: "User-Agent")
+
+        URLSession.shared.dataTask(with: getRequest) { [weak self] data, _, error in
+            guard let self = self else { completion(false); return }
+
+            guard error == nil, let data = data,
+                  let json = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] else {
+                DDLogError("Failed to fetch profile for bio-sex update!")
+                completion(false)
+                return
+            }
+
+            guard var patient = json["patient"] as? [String: Any] else {
+                DDLogInfo("No patient record in the fetched profile, not a DSA user!")
+                completion(false)
+                return
+            }
+
+            if let currentBioSex = patient["biologicalSex"] as? String, currentBioSex.lowercased() != "unknown" {
+                DDLogInfo("biological sex '\(currentBioSex)' already set in Tidepool, should not update!")
+                completion(false)
+                return
+            }
+
+            patient["biologicalSex"] = biologicalSex
+            var merged = json
+            merged["patient"] = patient
+
+            guard let body = try? JSONSerialization.data(withJSONObject: merged, options: []) else {
+                DDLogError("Serialization error merging bio-sex into profile!")
+                completion(false)
+                return
+            }
+
+            var postRequest = URLRequest(url: url)
+            postRequest.httpMethod = "POST"
+            postRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            postRequest.setValue(token, forHTTPHeaderField: self.kSessionTokenHeaderId)
+            postRequest.setValue(self.userAgentString(), forHTTPHeaderField: "User-Agent")
+            postRequest.httpBody = body
+
+            URLSession.shared.dataTask(with: postRequest) { _, response, _ in
+                let ok = (response as? HTTPURLResponse).map { $0.statusCode == 200 || $0.statusCode == 201 } ?? false
+                if ok {
+                    DDLogInfo("Posted updated profile successfully!")
+                } else {
+                    DDLogInfo("Post of updated profile failed!")
+                }
+                completion(ok)
+            }.resume()
+        }.resume()
     }
 
     // MARK: - User agent
