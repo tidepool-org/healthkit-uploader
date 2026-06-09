@@ -32,6 +32,7 @@ class HealthKitUploadTypeBloodGlucose: HealthKitUploadType {
         // source string, isDexcom?
         let whiteListSources = [
             "loop" : false,
+            "trio" : false,
             "bgmtool" : false,
             "dexcom" : true,
             "tomato" : false,
@@ -76,6 +77,11 @@ class HealthKitUploadTypeBloodGlucose: HealthKitUploadType {
 
         // (2) HKSource.bundleIdentifier ends in .Loop
         if bundleIdLowercased.hasSuffix(".loop") {
+            return (kTypeCbg, false)
+        }
+
+        // (2a) HKSource.bundleIdentifier ends in .Trio (open-source AID app)
+        if bundleIdLowercased.hasSuffix(".trio") {
             return (kTypeCbg, false)
         }
 

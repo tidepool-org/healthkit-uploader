@@ -81,16 +81,28 @@ class HealthKitConfiguration
         }
       
         if interfaceEnabled {
-            TPUploaderServiceAPI.connector?.configureUploadId() { (error) in
-                // If we are still turning on the HK interface after fetch of upload id, continue!
-                if self.turningOnHKInterface {
-                    DDLogInfo("No longer turning on HK interface")
-                    self.turningOnHKInterface = false
-                    if TPUploaderServiceAPI.connector?.currentUploadId != nil {
-                        self.turnOnInterface()
-                    } else {
-                        // TODO: uploader - If we fail to turn on interface then do a retry up to n (configurable) times. If it still fails, some sort of error to user, both in sidebar, and in sync UI, with option to trap to retry. Also, when tapping, maybe actually show the real error?
-                        self.turnOffInterface(error)
+            Task {
+                do {
+                    try await TPUploaderServiceAPIBridge.connector?.configureUploadId()
+                    // Back on main queue for UI state updates
+                    await MainActor.run {
+                        if self.turningOnHKInterface {
+                            DDLogInfo("No longer turning on HK interface")
+                            self.turningOnHKInterface = false
+                            if TPUploaderServiceAPIBridge.connector?.currentUploadId != nil {
+                                self.turnOnInterface()
+                            } else {
+                                self.turnOffInterface(nil)
+                            }
+                        }
+                    }
+                } catch {
+                    await MainActor.run {
+                        if self.turningOnHKInterface {
+                            DDLogInfo("No longer turning on HK interface")
+                            self.turningOnHKInterface = false
+                            self.turnOffInterface(error)
+                        }
                     }
                 }
             }
@@ -122,8 +134,7 @@ class HealthKitConfiguration
             // TODO: uploader - Revisit this. Do we want even the non-current mode readers/uploads to resume automatically? Or should that be behind some explicit resume UI
             hkManager.resumeUploadingIfResumable(config: config)
             
-            // Really just a one-time check to upload biological sex if Tidepool does not have it, but we can get it from HealthKit.
-            TPUploaderServiceAPI.connector?.updateProfileBioSexCheck()
+            // Bio-sex profile update is now the host app's responsibility
         } else {
             DDLogInfo("No logged in user, unable to start uploading")
         }
@@ -145,15 +156,16 @@ class HealthKitConfiguration
     /// Enables HealthKit for current user, and authorizes HealthKit data
     ///
     /// Note: This sets the current tidepool user as the HealthKit user, and authorizes HealthKit data
-    func enableHealthKitInterfaceAndAuthorize() {
-        
+    func enableHealthKitInterfaceAndAuthorize(completion: ((Bool) -> Void)? = nil) {
+
         DDLogVerbose("\(#function)")
-        
+
         guard self.config.currentUserId() != nil else {
             DDLogError("No logged in user at enableHealthKitInterfaceAndAuthorize!")
+            completion?(false)
             return
         }
-      
+
         let username = self.config.currentUserName
 
         if !self.isHealthKitInterfaceEnabledForCurrentUser() {
@@ -164,45 +176,50 @@ class HealthKitConfiguration
                 TPTimeZoneTracker.tracker?.clearTzCache()
             }
             // force refetch of upload id because it may have changed for the new user...
-            TPUploaderServiceAPI.connector?.currentUploadId = nil
+            TPUploaderServiceAPIBridge.connector?.currentUploadId = nil
             settings.interfaceUserId.value = config.currentUserId()!
             settings.interfaceUserName.value = username
         }
         // Note: set this at the end because above will clear this value if switching current HK user!
         settings.interfaceEnabled.value = true
-      
-        authorizeHealthKit()
+
+        authorizeHealthKit(completion: completion)
     }
 
     /// Authorizes HealthKit for current user
-    func authorizeHealthKit() {
+    func authorizeHealthKit(completion: ((Bool) -> Void)? = nil) {
         DDLogVerbose("\(#function)")
-        
+
         guard self.config.currentUserId() != nil else {
             DDLogError("No logged in user at authorizeHealthKit!")
+            completion?(false)
             return
         }
-      
+
         guard self.settings.interfaceEnabled.value else {
           DDLogError("Interface not enabled at authorizeHealthKit!")
+          completion?(false)
           return
         }
 
         HealthKitManager.sharedInstance.authorize() {
             success, error -> Void in
-            
+
             DDLogVerbose("\(#function)")
 
             if success {
                 // NOTE: This doesn't mean user gave access, just that the authorization was presented
-                DDLogError("Success authorizing health data")
+                DDLogInfo("Success authorizing health data")
                 DispatchQueue.main.async(execute: {
                   self.configureHealthKitInterface(shouldAuthorize: false)
+                  completion?(true)
                 })
             } else if error != nil {
                 DDLogError("Error authorizing health data \(String(describing: error)), \(error!.userInfo)")
+                completion?(false)
             } else {
                 DDLogError("Unknown error authorizing health data")
+                completion?(false)
             }
         }
     }

@@ -1,20 +1,21 @@
 Pod::Spec.new do |spec|
 
   spec.name         = "TPHealthKitUploader"
-  spec.version      = "0.9.2"
+  spec.version      = "2.0.0"
   spec.summary      = "A framework to upload Apple HealthKit items to Tidepool."
   spec.description  = <<-DESC
-  Initialized with a call-back protocol to provide the framework login context, this provides an interface to 
-  initialize HealthKit for the app, to upload historical HealthKit samples, and to continuously upload new current samples.
-  Current sample types supported are blood glusose, insulin, carbs, and workouts.
+  Reads HealthKit samples (blood glucose, insulin, carbs, workouts) and uploads them
+  to Tidepool via TidepoolKit. Supports historical and continuous upload modes.
                    DESC
 
   spec.homepage     = "https://github.com/tidepool-org/healthkit-uploader"
   spec.license      = "BSD"
-  spec.author       = { "Larry" => "larry@tidepool.org" }
-  spec.platform     = :ios, "11.0"
+  spec.author       = { "Tidepool" => "support@tidepool.org" }
+  spec.platform     = :ios, "15.0"
   spec.source       = { :git => "https://github.com/tidepool-org/healthkit-uploader.git", :tag => spec.version }
   spec.source_files  = 'Source/*.swift', 'Source/*/*.swift', 'Source/*/*/*.swift'
-  spec.swift_version = "4.2"
+  spec.swift_version = "5.9"
+
+  spec.dependency 'TidepoolKit'
 
 end

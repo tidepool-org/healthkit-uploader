@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Tidepool Project
+ * Copyright (c) 2019-2025, Tidepool Project
  *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the associated License, which is identical to the BSD 2-Clause
@@ -15,38 +15,41 @@
 
 import Foundation
 
-/// User of the TPHealthKitUploader framework must configure the framework passing an object with this protocol which the framework will use as documented below.
+/// Configuration protocol for the TPHealthKitUploader framework.
+///
+/// The host app implements this to provide connectivity checks, user info, and callbacks.
+/// Authentication and API calls are now handled by the injected TAPI instance (TidepoolKit).
 public protocol TPUploaderConfigInfo {
     func isConnectedToNetwork() -> Bool
-    /// Nil when logged out
-    func sessionToken() -> String?
-    /// base string to constuct url for current service.
-    func baseUrlString() -> String?
+
     /// current logged in user id
     func currentUserId() -> String?
+
     /// account for current user is a DSA
     func isDSAUser() -> Bool
+
     var currentUserName: String? { get }
+
     /// biological sex is gleaned from HealthKit, and uploaded when missing in the service.
     var bioSex: String? { get set }
-  
+
     /// interface callbacks
-    func onTurningOnInterface();
-    func onTurnOnInterface();
-    func onTurnOffInterface(_ error: Error?);
-  
-    /// uploader limits and timmeout (will retry up to n times, using the Int values in the array, the length of the array must be the same for these
+    func onTurningOnInterface()
+    func onTurnOnInterface()
+    func onTurnOffInterface(_ error: Error?)
+
+    /// uploader limits and timeout
     func samplesUploadLimits() -> [Int]
     func deletesUploadLimits() -> [Int]
     func uploaderTimeouts() -> [Int]
-  
+
     /// suppress deletes, will NOT upload deletes if true
     func supressUploadDeletes() -> Bool
-  
+
     /// simulate upload, will NOT upload if false
     func simulateUpload() -> Bool
-  
-    /// simulate upload, will NOT include sensitive info (like auth token, and curl request/response for testing, which conain auth token) if false
+
+    /// simulate upload, will NOT include sensitive info if false
     func includeSensitiveInfo() -> Bool
 
     /// logging callbacks
@@ -55,4 +58,3 @@ public protocol TPUploaderConfigInfo {
     func logInfo(_ str: String)
     func logDebug(_ str: String)
 }
-

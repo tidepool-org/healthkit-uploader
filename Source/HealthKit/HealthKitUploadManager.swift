@@ -126,7 +126,7 @@ class HealthKitUploadManager:
     func resumeUploadingIfResumable(config: TPUploaderConfigInfo) {
         DDLogVerbose("")
         self.config = config
-        if TPUploaderServiceAPI.connector?.currentUploadId != nil {
+        if TPUploaderServiceAPIBridge.connector?.currentUploadId != nil {
           currentHelper.resumeUploadingIfResumable(config: config, currentUserId: config.currentUserId(), samplesUploadLimits: config.samplesUploadLimits(), deletesUploadLimits: config.deletesUploadLimits(), uploaderTimeouts: config.uploaderTimeouts())
           historicalHelper.resumeUploadingIfResumable(config: config, currentUserId: config.currentUserId(), samplesUploadLimits: config.samplesUploadLimits(), deletesUploadLimits: config.deletesUploadLimits(), uploaderTimeouts: config.uploaderTimeouts())
         } else {
@@ -353,8 +353,8 @@ private class HealthKitUploadHelper: HealthKitSampleUploaderDelegate, HealthKitU
 
         var errorMessage: String?
         var errorCode: Int = 0
-        if let serviceAPI = TPUploaderServiceAPI.connector {
-            if serviceAPI.currentUploadId == nil {
+        if let bridge = TPUploaderServiceAPIBridge.connector {
+            if bridge.currentUploadId == nil {
                 errorMessage = "Unable to upload. No upload id available."
                 errorCode = -2
             }
