@@ -92,6 +92,9 @@ class HealthKitConfiguration
                             if TPUploaderServiceAPIBridge.connector?.currentUploadId != nil {
                                 self.turnOnInterface()
                             } else {
+                                // TODO: uploader - retry up to n (configurable) times before giving up,
+                                // and propagate a real error here instead of nil so the host (RN) layer can
+                                // surface it via onTurnOffInterface (toggle + sync UI, with tap-to-retry).
                                 self.turnOffInterface(nil)
                             }
                         }

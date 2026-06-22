@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2025, Tidepool Project
+ * Copyright (c) 2019-2026, Tidepool Project
  *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the associated License, which is identical to the BSD 2-Clause
@@ -272,21 +272,21 @@ class TPUploaderServiceAPIBridge: NSObject, TAPIObserver {
             await api.addObserver(self, queue: .main)
             let session = await api.session
             cacheLock.lock()
+            defer { cacheLock.unlock() }
             _cachedAccessToken = session?.accessToken
             _cachedEnvironment = session?.environment
-            cacheLock.unlock()
         }
     }
 
     // MARK: - TAPIObserver
 
     func apiDidUpdateSession(_ session: TSession?) {
-        // Called on main queue (specified in addObserver). Update token + environment together
-        // under the lock so readers see a consistent pair.
-        cacheLock.lock()
-        _cachedAccessToken = session?.accessToken
-        _cachedEnvironment = session?.environment
-        cacheLock.unlock()
+        do {
+            cacheLock.lock()
+            defer { cacheLock.unlock() }
+            _cachedAccessToken = session?.accessToken
+            _cachedEnvironment = session?.environment
+        }
         DDLogInfo("TPUploaderServiceAPIBridge: session updated, token \(session != nil ? "present" : "nil")")
     }
 
@@ -370,13 +370,13 @@ class TPUploaderServiceAPIBridge: NSObject, TAPIObserver {
     /// Post timezone change events using cached token/environment.
     /// Fires a URLSession POST (completion-based) for backward compatibility.
     func postTimezoneChangesEvent(_ tzChanges: [(time: String, newTzId: String, oldTzId: String?)], _ completion: @escaping (String?) -> (Void)) {
-        guard let currentUploadId = self.currentUploadId else {
+        guard self.currentUploadId != nil else {
             DDLogInfo("Timezone change upload fail: no upload id!")
             completion(nil)
             return
         }
 
-        guard let (token, environment) = cachedSession() else {
+        guard cachedSession() != nil else {
             DDLogInfo("Timezone change upload fail: no session!")
             completion(nil)
             return
@@ -411,19 +411,16 @@ class TPUploaderServiceAPIBridge: NSObject, TAPIObserver {
             return
         }
 
-        let path = "/v1/data_sets/\(currentUploadId)/data"
-        guard let url = try? environment.url(path: path) else {
-            DDLogError("Failed to construct URL for timezone event!")
+        let request: URLRequest
+        do {
+            var req = try makeDataUploadRequest("POST")
+            req.httpBody = body
+            request = req
+        } catch {
+            DDLogError("Failed to construct request for timezone event: \(error.localizedDescription)")
             completion(nil)
             return
         }
-
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue(token, forHTTPHeaderField: kSessionTokenHeaderId)
-        request.setValue(self.userAgentString(), forHTTPHeaderField: "User-Agent")
-        request.httpBody = body
 
         let task = URLSession.shared.dataTask(with: request) { (_, response, error) in
             DispatchQueue.main.async {
