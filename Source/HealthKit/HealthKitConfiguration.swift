@@ -164,7 +164,9 @@ class HealthKitConfiguration
 
         DDLogVerbose("\(#function)")
 
-        guard self.config.currentUserId() != nil else {
+        // Capture the guarded value once — logout can nil the userId between
+        // this guard and the later read, and the old re-read force-unwrapped.
+        guard let currentUserId = self.config.currentUserId() else {
             DDLogError("No logged in user at enableHealthKitInterfaceAndAuthorize!")
             completion?(false)
             return
@@ -181,7 +183,7 @@ class HealthKitConfiguration
             }
             // force refetch of upload id because it may have changed for the new user...
             TPUploaderServiceAPIBridge.connector?.currentUploadId = nil
-            settings.interfaceUserId.value = config.currentUserId()!
+            settings.interfaceUserId.value = currentUserId
             settings.interfaceUserName.value = username
         }
         // Note: set this at the end because above will clear this value if switching current HK user!

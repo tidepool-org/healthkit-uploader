@@ -95,6 +95,13 @@ class HealthKitUploadManager:
     func startUploading(mode: TPUploader.Mode, config: TPUploaderConfigInfo) {
         DDLogVerbose("mode: \(mode.rawValue)")
 
+        // The session (and its userId) can be torn down by logout between the
+        // caller's checks and this point — bail instead of force-unwrapping.
+        guard let currentUserId = config.currentUserId() else {
+            DDLogError("startUploading with no logged in user, mode: \(mode.rawValue)")
+            return
+        }
+
         self.config = config
         let helper = mode == .Current ? currentHelper : historicalHelper
 
@@ -103,7 +110,7 @@ class HealthKitUploadManager:
             self.beginSamplesUploadBackgroundTask()
         }
 
-        helper.startUploading(config: config, currentUserId: config.currentUserId()!, samplesUploadLimits: config.samplesUploadLimits(), deletesUploadLimits: config.deletesUploadLimits(), uploaderTimeouts: config.uploaderTimeouts())
+        helper.startUploading(config: config, currentUserId: currentUserId, samplesUploadLimits: config.samplesUploadLimits(), deletesUploadLimits: config.deletesUploadLimits(), uploaderTimeouts: config.uploaderTimeouts())
      }
 
     func stopUploading(mode: TPUploader.Mode, reason: TPUploader.StoppedReason) {
@@ -525,15 +532,17 @@ private class HealthKitUploadHelper: HealthKitSampleUploaderDelegate, HealthKitU
             }
         }
       
-        if shouldRetry {
+        // Retries fire from an async timer and race logout: the session (and
+        // userId) may be gone by now. Stop cleanly instead of force-unwrapping
+        if shouldRetry, let config = self.config, let currentUserId = config.currentUserId() {
             self.uploadAttemptsRemaining += attemptsRemainingDelta
             if self.uploadAttemptsRemaining < 1 {
                 self.didResetUploadAttemptsRemaining = false
                 self.uploadAttemptsRemaining = 1
                 self.uploadLimitsIndex = self.uploadLimitsIndex + 1
-            }            
+            }
             DDLogInfo("Will retry! Mode: \(mode), uploadLimitsIndex: \(uploadLimitsIndex + 1), max uploadLimitsIndex: \(self.samplesUploadLimits.count - 1)")
-            self.startUploading(config: self.config!, currentUserId: self.config!.currentUserId()!, samplesUploadLimits: self.config!.samplesUploadLimits(), deletesUploadLimits: self.config!.deletesUploadLimits(), uploaderTimeouts: self.config!.uploaderTimeouts(), uploadLimitsIndex: self.uploadLimitsIndex, uploadAttemptsRemaining: self.uploadAttemptsRemaining, isRetry: true)
+            self.startUploading(config: config, currentUserId: currentUserId, samplesUploadLimits: config.samplesUploadLimits(), deletesUploadLimits: config.deletesUploadLimits(), uploaderTimeouts: config.uploaderTimeouts(), uploadLimitsIndex: self.uploadLimitsIndex, uploadAttemptsRemaining: self.uploadAttemptsRemaining, isRetry: true)
             postNotifications([TPUploaderNotifications.Updated, TPUploaderNotifications.UploadRetry], mode: mode, reason: reason)
         } else {
             if mode == .Current {
