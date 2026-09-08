@@ -15,8 +15,8 @@
 
 import HealthKit
 
-// Note: The current phase start date is set some time delta in the past. Set it to 4 hours to pick up deletes from Loop that occur 3 hours after Dexcom samples are reported, since only the current upload picks up new deletes (anchor query).
-let kCurrentStartTimeInPast: TimeInterval = (-60 * 60 * 4)
+// Note: The current phase start date is set some time delta in the past (see
+// TPUploaderConfigInfo.currentModeLookback, default 4 hours).
 
 class HealthKitUploadManager:
         NSObject,
@@ -395,15 +395,24 @@ private class HealthKitUploadHelper: HealthKitSampleUploaderDelegate, HealthKitU
   
         // For initial state, set up date fence posts for anchors, and configure and start readers
         if settings.currentStartDate.value == nil {
-            settings.currentStartDate.value = Date().addingTimeInterval(kCurrentStartTimeInPast)
+            settings.currentStartDate.value = Date().addingTimeInterval(-config.currentModeLookback())
             DDLogVerbose("new currentStartDate: \(settings.currentStartDate.value!)")
         }
         if settings.historicalEndDate.value == nil {
-            settings.historicalEndDate.value = Date()
+            // Historical covers everything before the Current fence — no overlap
+            // (the backend dedups, so an overlap only wastes upload time).
+            settings.historicalEndDate.value = settings.currentStartDate.value
             DDLogVerbose("new historicalEndDate: \(settings.historicalEndDate.value!)")
             // Also set earliest and latest dates here until we discover the range
             settings.historicalEarliestDate.value = settings.historicalEndDate.value
             settings.historicalLatestDate.value = settings.historicalEndDate.value
+        }
+        if mode == .HistoricalAll, settings.historicalFloorDate.value == nil,
+            let lookbackCap = config.historicalLookbackCap() {
+            // Fixed at the start of a fresh backfill (resets recompute it), so a
+            // resumed backfill keeps the same window across launches.
+            settings.historicalFloorDate.value = Date().addingTimeInterval(-lookbackCap)
+            DDLogVerbose("new historicalFloorDate: \(settings.historicalFloorDate.value!)")
         }
 
         if mode == TPUploader.Mode.Current {

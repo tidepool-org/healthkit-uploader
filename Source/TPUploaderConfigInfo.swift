@@ -57,4 +57,20 @@ public protocol TPUploaderConfigInfo {
     func logError(_ str: String)
     func logInfo(_ str: String)
     func logDebug(_ str: String)
+
+    /// How far before "now" the Current-mode fence is placed when it is first
+    /// set. Samples older than the fence are the historical uploader's job.
+    func currentModeLookback() -> TimeInterval
+
+    /// Cap on how far back a historical upload reaches, measured from the time
+    /// the backfill first starts; nil = unlimited (back to the earliest sample).
+    func historicalLookbackCap() -> TimeInterval?
+}
+
+public extension TPUploaderConfigInfo {
+    // 4 hours: picks up deletes from Loop that occur up to 3 hours after Dexcom
+    // samples are reported (only Current picks up deletes, via anchor query).
+    func currentModeLookback() -> TimeInterval { return 60 * 60 * 4 }
+
+    func historicalLookbackCap() -> TimeInterval? { return nil }
 }

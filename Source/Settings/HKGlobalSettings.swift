@@ -21,6 +21,7 @@ class HKGlobalSettings {
   
     // Other upload settings
     var historicalEndDate: HKSettingDate
+    var historicalFloorDate: HKSettingDate
     var historicalEarliestDate: HKSettingDate
     var historicalLatestDate: HKSettingDate
     var hasPendingHistoricalUploads: HKSettingBool
@@ -72,6 +73,7 @@ class HKGlobalSettings {
         self.hasPresentedSyncUI = HKSettingBool(key: "HasPresentedSyncUI")
         // global upload...
         self.historicalEndDate = HKSettingDate(key: "historicalEndDateKey")
+        self.historicalFloorDate = HKSettingDate(key: "historicalFloorDateKey")
         self.historicalLatestDate = HKSettingDate(key: "historicalLatestDateKey")
         self.historicalEarliestDate = HKSettingDate(key: "historicalEarliestDateKey")
         self.hasPendingHistoricalUploads = HKSettingBool(key: "hasPendingHistoricalUploadsKey")
@@ -96,6 +98,7 @@ class HKGlobalSettings {
         ]
         self.historicalUploadSettings = [
             self.historicalEndDate,
+            self.historicalFloorDate,
             self.historicalEarliestDate,
             self.historicalLatestDate,
             self.hasPendingHistoricalUploads,
