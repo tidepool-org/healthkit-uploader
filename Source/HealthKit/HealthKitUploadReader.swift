@@ -302,7 +302,8 @@ class HealthKitUploadReader: NSObject {
             return
         }
                 
-        let start = (mode == .Current ? fenceDate : Date.distantPast)
+        let historicalFloor = globalSettings.historicalFloorDate.value ?? Date.distantPast
+        let start = (mode == .Current ? fenceDate : historicalFloor)
         let end = (mode == .Current ? Date.distantFuture : fenceDate)
         DDLogInfo("using query start: \(start), end: \(end), sampleReadLimit: \(sampleReadLimit)")
         self.readSamplesFromAnchorForType(self.uploadType, start: start, end: end, anchor: self.queryAnchor, limit: sampleReadLimit, resultsHandler: self.readResultsHandler)
@@ -438,7 +439,8 @@ class HealthKitUploadReader: NSObject {
             DDLogError("end date should already be set!")
         }
 
-        let predicate = HKQuery.predicateForSamples(withStart: Date.distantPast, end: endDate, options: [])
+        let floorDate = globalSettings.historicalFloorDate.value ?? Date.distantPast
+        let predicate = HKQuery.predicateForSamples(withStart: floorDate, end: endDate, options: [])
         let startDateSortDescriptor = NSSortDescriptor(key:HKSampleSortIdentifierStartDate, ascending: true)
         let endDateSortDescriptor = NSSortDescriptor(key:HKSampleSortIdentifierStartDate, ascending: false)
         

@@ -89,7 +89,7 @@ class TPTimeZoneTracker {
             let changeCount = changes.count
             if changeCount > 0 {
                 changesUploading = true
-                TPUploaderServiceAPI.connector?.postTimezoneChangesEvent(changes) {
+                TPUploaderServiceAPIBridge.connector?.postTimezoneChangesEvent(changes) {
                     lastTzUploaded in
                     if lastTzUploaded != nil {
                         self.removeStoredTimezoneChanges(changeCount)

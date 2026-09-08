@@ -83,7 +83,7 @@ class HealthKitUploader: NSObject, URLSessionDelegate, URLSessionTaskDelegate, U
             // Create upload task if there are uploads to do...
             if batchSamplesPostBodyURL != nil {
                 do {
-                    var request = try TPUploaderServiceAPI.connector!.makeDataUploadRequest("POST")
+                    var request = try TPUploaderServiceAPIBridge.connector!.makeDataUploadRequest("POST")
                     if self.mode == .HistoricalAll {
                         request.timeoutInterval = self.requestTimeoutInterval
                         DDLogInfo("requestTimeout: \(self.requestTimeoutInterval)")
@@ -121,7 +121,7 @@ class HealthKitUploader: NSObject, URLSessionDelegate, URLSessionTaskDelegate, U
         {
             self.setPendingUploadsState(uploadTaskIsPending: true)
             do {
-                var deleteSamplesRequest = try TPUploaderServiceAPI.connector!.makeDataUploadRequest("DELETE")
+                var deleteSamplesRequest = try TPUploaderServiceAPIBridge.connector!.makeDataUploadRequest("DELETE")
                 if mode == .HistoricalAll {
                     deleteSamplesRequest.timeoutInterval = self.requestTimeoutInterval
                     DDLogInfo("requestTimeout: \(self.requestTimeoutInterval)")

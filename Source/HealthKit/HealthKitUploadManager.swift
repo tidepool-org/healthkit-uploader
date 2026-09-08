@@ -15,8 +15,8 @@
 
 import HealthKit
 
-// Note: The current phase start date is set some time delta in the past. Set it to 4 hours to pick up deletes from Loop that occur 3 hours after Dexcom samples are reported, since only the current upload picks up new deletes (anchor query).
-let kCurrentStartTimeInPast: TimeInterval = (-60 * 60 * 4)
+// Note: The current phase start date is set some time delta in the past (see
+// TPUploaderConfigInfo.currentModeLookback, default 4 hours).
 
 class HealthKitUploadManager:
         NSObject,
@@ -95,6 +95,13 @@ class HealthKitUploadManager:
     func startUploading(mode: TPUploader.Mode, config: TPUploaderConfigInfo) {
         DDLogVerbose("mode: \(mode.rawValue)")
 
+        // The session (and its userId) can be torn down by logout between the
+        // caller's checks and this point — bail instead of force-unwrapping.
+        guard let currentUserId = config.currentUserId() else {
+            DDLogError("startUploading with no logged in user, mode: \(mode.rawValue)")
+            return
+        }
+
         self.config = config
         let helper = mode == .Current ? currentHelper : historicalHelper
 
@@ -103,7 +110,7 @@ class HealthKitUploadManager:
             self.beginSamplesUploadBackgroundTask()
         }
 
-        helper.startUploading(config: config, currentUserId: config.currentUserId()!, samplesUploadLimits: config.samplesUploadLimits(), deletesUploadLimits: config.deletesUploadLimits(), uploaderTimeouts: config.uploaderTimeouts())
+        helper.startUploading(config: config, currentUserId: currentUserId, samplesUploadLimits: config.samplesUploadLimits(), deletesUploadLimits: config.deletesUploadLimits(), uploaderTimeouts: config.uploaderTimeouts())
      }
 
     func stopUploading(mode: TPUploader.Mode, reason: TPUploader.StoppedReason) {
@@ -126,7 +133,7 @@ class HealthKitUploadManager:
     func resumeUploadingIfResumable(config: TPUploaderConfigInfo) {
         DDLogVerbose("")
         self.config = config
-        if TPUploaderServiceAPI.connector?.currentUploadId != nil {
+        if TPUploaderServiceAPIBridge.connector?.currentUploadId != nil {
           currentHelper.resumeUploadingIfResumable(config: config, currentUserId: config.currentUserId(), samplesUploadLimits: config.samplesUploadLimits(), deletesUploadLimits: config.deletesUploadLimits(), uploaderTimeouts: config.uploaderTimeouts())
           historicalHelper.resumeUploadingIfResumable(config: config, currentUserId: config.currentUserId(), samplesUploadLimits: config.samplesUploadLimits(), deletesUploadLimits: config.deletesUploadLimits(), uploaderTimeouts: config.uploaderTimeouts())
         } else {
@@ -353,8 +360,8 @@ private class HealthKitUploadHelper: HealthKitSampleUploaderDelegate, HealthKitU
 
         var errorMessage: String?
         var errorCode: Int = 0
-        if let serviceAPI = TPUploaderServiceAPI.connector {
-            if serviceAPI.currentUploadId == nil {
+        if let bridge = TPUploaderServiceAPIBridge.connector {
+            if bridge.currentUploadId == nil {
                 errorMessage = "Unable to upload. No upload id available."
                 errorCode = -2
             }
@@ -388,15 +395,24 @@ private class HealthKitUploadHelper: HealthKitSampleUploaderDelegate, HealthKitU
   
         // For initial state, set up date fence posts for anchors, and configure and start readers
         if settings.currentStartDate.value == nil {
-            settings.currentStartDate.value = Date().addingTimeInterval(kCurrentStartTimeInPast)
+            settings.currentStartDate.value = Date().addingTimeInterval(-config.currentModeLookback())
             DDLogVerbose("new currentStartDate: \(settings.currentStartDate.value!)")
         }
         if settings.historicalEndDate.value == nil {
-            settings.historicalEndDate.value = Date()
+            // Historical covers everything before the Current fence — no overlap
+            // (the backend dedups, so an overlap only wastes upload time).
+            settings.historicalEndDate.value = settings.currentStartDate.value
             DDLogVerbose("new historicalEndDate: \(settings.historicalEndDate.value!)")
             // Also set earliest and latest dates here until we discover the range
             settings.historicalEarliestDate.value = settings.historicalEndDate.value
             settings.historicalLatestDate.value = settings.historicalEndDate.value
+        }
+        if mode == .HistoricalAll, settings.historicalFloorDate.value == nil,
+            let lookbackCap = config.historicalLookbackCap() {
+            // Fixed at the start of a fresh backfill (resets recompute it), so a
+            // resumed backfill keeps the same window across launches.
+            settings.historicalFloorDate.value = Date().addingTimeInterval(-lookbackCap)
+            DDLogVerbose("new historicalFloorDate: \(settings.historicalFloorDate.value!)")
         }
 
         if mode == TPUploader.Mode.Current {
@@ -525,15 +541,17 @@ private class HealthKitUploadHelper: HealthKitSampleUploaderDelegate, HealthKitU
             }
         }
       
-        if shouldRetry {
+        // Retries fire from an async timer and race logout: the session (and
+        // userId) may be gone by now. Stop cleanly instead of force-unwrapping
+        if shouldRetry, let config = self.config, let currentUserId = config.currentUserId() {
             self.uploadAttemptsRemaining += attemptsRemainingDelta
             if self.uploadAttemptsRemaining < 1 {
                 self.didResetUploadAttemptsRemaining = false
                 self.uploadAttemptsRemaining = 1
                 self.uploadLimitsIndex = self.uploadLimitsIndex + 1
-            }            
+            }
             DDLogInfo("Will retry! Mode: \(mode), uploadLimitsIndex: \(uploadLimitsIndex + 1), max uploadLimitsIndex: \(self.samplesUploadLimits.count - 1)")
-            self.startUploading(config: self.config!, currentUserId: self.config!.currentUserId()!, samplesUploadLimits: self.config!.samplesUploadLimits(), deletesUploadLimits: self.config!.deletesUploadLimits(), uploaderTimeouts: self.config!.uploaderTimeouts(), uploadLimitsIndex: self.uploadLimitsIndex, uploadAttemptsRemaining: self.uploadAttemptsRemaining, isRetry: true)
+            self.startUploading(config: config, currentUserId: currentUserId, samplesUploadLimits: config.samplesUploadLimits(), deletesUploadLimits: config.deletesUploadLimits(), uploaderTimeouts: config.uploaderTimeouts(), uploadLimitsIndex: self.uploadLimitsIndex, uploadAttemptsRemaining: self.uploadAttemptsRemaining, isRetry: true)
             postNotifications([TPUploaderNotifications.Updated, TPUploaderNotifications.UploadRetry], mode: mode, reason: reason)
         } else {
             if mode == .Current {

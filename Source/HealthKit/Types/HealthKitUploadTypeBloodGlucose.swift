@@ -32,14 +32,10 @@ class HealthKitUploadTypeBloodGlucose: HealthKitUploadType {
         // source string, isDexcom?
         let whiteListSources = [
             "loop" : false,
+            "trio" : false,
             "bgmtool" : false,
             "dexcom" : true,
             "tomato" : false,
-            ]
-        // bundleId string, isDexcom?
-        let whiteListBundleIds = [
-            "org.nightscoutfoundation.spike" : false,
-            "com.spike-app.spike": false, // old TestFlight distribution
             ]
         // bundleId component string, isDexcom?
         let whiteListBundleComponents = [
@@ -61,21 +57,30 @@ class HealthKitUploadTypeBloodGlucose: HealthKitUploadType {
         }
 
         // Also mark glucose data from HK as CGM data if any of the following are true:
-        // (1) HKSource.bundleIdentifier is one of the following: com.dexcom.Share2, com.dexcom.CGM, com.dexcom.G6, or org.nightscoutfoundation.spike.
-        // (1a) HKSource.bundleIdentifier has com.dexcom as a prefix (so more general compare)...
-
+        // (1) HKSource.bundleIdentifier has com.dexcom as a prefix (catches com.dexcom.Share2, .CGM, .G6, etc.)
         let bundleIdLowercased = sample.sourceRevision.source.bundleIdentifier.lowercased()
-        isDexcom = whiteListBundleIds[bundleIdLowercased]
-        if isDexcom != nil {
-            return (kTypeCbg, isDexcom!)
-        }
-
         if bundleIdLowercased.hasPrefix("com.dexcom") {
             return (kTypeCbg, true)
         }
 
+        // (1b) Senseonics Eversense apps all use a com.senseonics prefix.
+        if bundleIdLowercased.hasPrefix("com.senseonics") {
+            return (kTypeCbg, false)
+        }
+
+        // (1a) Spike can be self-compiled with an arbitrary bundle ID, so match a "spike"
+        // suffix (covers org.nightscoutfoundation.spike, com.spike-app.spike, custom builds).
+        if bundleIdLowercased.hasSuffix(".spike") {
+            return (kTypeCbg, false)
+        }
+
         // (2) HKSource.bundleIdentifier ends in .Loop
         if bundleIdLowercased.hasSuffix(".loop") {
+            return (kTypeCbg, false)
+        }
+
+        // (2a) HKSource.bundleIdentifier ends in .Trio (open-source AID app)
+        if bundleIdLowercased.hasSuffix(".trio") {
             return (kTypeCbg, false)
         }
 
